@@ -9,10 +9,10 @@ THISDIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 XTENSA_TOOLS_ROOT ?=
 
 # base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= /tools/esp8266/sdk/ESP8266_NONOS_SDK
+SDK_BASE	?= /home/magi/ESP8266_NONOS_SDK/
 
 #Esptool.py path and port
-ESPTOOL		?= /tools/esp8266/esptool/esptool.py
+ESPTOOL		?= /opt/xtensa-lx106-elf/bin/esptool.py
 ESPPORT		?= /dev/tty.SLAB_USBtoUART
 #ESPPORT		?= /dev/tty.wchusbserial1410
 #ESPDELAY indicates seconds to wait between flashing the two binary images
@@ -23,9 +23,9 @@ ESPBAUD		?= 460800
 # 40m 26m 20m 80m
 ESP_FREQ = 40m
 # qio qout dio dout
-ESP_MODE = dio
+ESP_MODE = dout
 #4m 2m 8m 16m 32m
-ESP_SIZE = 32m
+ESP_SIZE = 8m
 
 
 VERBOSE = yes
