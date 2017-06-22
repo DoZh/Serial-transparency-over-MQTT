@@ -37,6 +37,68 @@
 #include "user_interface.h"
 #include "mem.h"
 
+#include "ip_addr.h"
+#include "smartconfig.h"
+#include "airkiss.h"
+
+
+/******************************************************************************
+ * FunctionName : user_rf_cal_sector_set
+ * Description  : SDK just reversed 4 sectors, used for rf init data and paramters.
+ *                We add this function to force users to set rf cal sector, since
+ *                we don't know which sector is free in user's application.
+ *                sector map for last several sectors : ABCCC
+ *                A : rf cal
+ *                B : rf init data
+ *                C : sdk parameters
+ * Parameters   : none
+ * Returns      : rf cal sector
+*******************************************************************************/
+uint32 ICACHE_FLASH_ATTR
+user_rf_cal_sector_set(void)
+{
+    enum flash_size_map size_map = system_get_flash_size_map();
+    uint32 rf_cal_sec = 0;
+
+    switch (size_map) {
+        case FLASH_SIZE_4M_MAP_256_256:
+            rf_cal_sec = 128 - 5;
+            break;
+
+        case FLASH_SIZE_8M_MAP_512_512:
+            rf_cal_sec = 256 - 5;
+            break;
+
+        case FLASH_SIZE_16M_MAP_512_512:
+        case FLASH_SIZE_16M_MAP_1024_1024:
+            rf_cal_sec = 512 - 5;
+            break;
+
+        case FLASH_SIZE_32M_MAP_512_512:
+        case FLASH_SIZE_32M_MAP_1024_1024:
+            rf_cal_sec = 1024 - 5;
+            break;
+
+        case FLASH_SIZE_64M_MAP_1024_1024:
+            rf_cal_sec = 2048 - 5;
+            break;
+        case FLASH_SIZE_128M_MAP_1024_1024:
+            rf_cal_sec = 4096 - 5;
+            break;
+        default:
+            rf_cal_sec = 0;
+            break;
+    }
+
+    return rf_cal_sec;
+}
+
+
+void ICACHE_FLASH_ATTR
+user_rf_pre_init(void)
+{
+}
+
 MQTT_Client mqttClient;
 static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
 {
@@ -120,10 +182,20 @@ static void ICACHE_FLASH_ATTR app_init(void)
   MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
   MQTT_OnPublished(&mqttClient, mqttPublishedCb);
   MQTT_OnData(&mqttClient, mqttDataCb);
-
+	os_printf("*_*Comp app_init\n");
   WIFI_Connect(STA_SSID, STA_PASS, wifiConnectCb);
+	//smartconfig_start(smartconfig_done);
 }
 void user_init(void)
 {
+
+  os_printf("SDK version:%s\n", system_get_sdk_version());
+  smartconfig_set_type(SC_TYPE_ESPTOUCH_AIRKISS); //SC_TYPE_ESPTOUCH,SC_TYPE_AIRKISS,SC_TYPE_ESPTOUCH_AIRKISS
+  wifi_set_opmode(STATION_MODE);
+	//smartconfig_start(smartconfig_done);
+
   system_init_done_cb(app_init);
+
+
+
 }
