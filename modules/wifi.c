@@ -44,6 +44,8 @@ const airkiss_config_t akconf =
 	0,
 };
 
+static void ICACHE_FLASH_ATTR wifi_check_ip(void *arg);
+
 LOCAL void ICACHE_FLASH_ATTR
 airkiss_wifilan_time_callback(void)
 {
@@ -140,7 +142,7 @@ airkiss_start_discover(void)
 void ICACHE_FLASH_ATTR
 smartconfig_done(sc_status status, void *pdata)
 {
-		os_printf("*_*In smartconfig_done\n");
+		INFO("*_*In smartconfig_done\n");
     switch(status) {
         case SC_STATUS_WAIT:
             os_printf("SC_STATUS_WAIT\n");
@@ -178,6 +180,9 @@ smartconfig_done(sc_status status, void *pdata)
 				airkiss_start_discover();
             }
             smartconfig_stop();
+						os_timer_disarm(&WiFiLinker);
+						os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
+						os_timer_arm(&WiFiLinker, 1000, 0);
 						os_printf("*_*Comp case SC_STATUS_LINK_OVER\n");
             break;
     }
@@ -239,19 +244,33 @@ static void ICACHE_FLASH_ATTR wifi_check_ip(void *arg)
   }
 }
 
-void ICACHE_FLASH_ATTR WIFI_Connect(uint8_t* ssid, uint8_t* pass, WifiCallback cb)
+//void ICACHE_FLASH_ATTR WIFI_Connect(uint8_t* ssid, uint8_t* pass, WifiCallback cb)
+void ICACHE_FLASH_ATTR WIFI_Connect(WifiCallback cb)
 {
   struct station_config stationConf;
 
   INFO("WIFI_INIT\r\n");
   wifi_set_opmode_current(STATION_MODE);
   wifiCb = cb;
+  /*
   os_memset(&stationConf, 0, sizeof(struct station_config));
   os_sprintf(stationConf.ssid, "%s", ssid);
   os_sprintf(stationConf.password, "%s", pass);
   wifi_station_set_config_current(&stationConf);
-  os_timer_disarm(&WiFiLinker);
-  os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
-  os_timer_arm(&WiFiLinker, 1000, 0);
-  wifi_station_connect();
+  */
+	wifi_station_get_config_default(&stationConf);
+	if (os_strlen(stationConf.ssid) != 0)
+	{
+		INFO("stationConf.ssid: %s\n", stationConf.ssid);
+	  INFO("stationConf.password: %s\n", stationConf.password);
+		os_timer_disarm(&WiFiLinker);
+		os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
+		os_timer_arm(&WiFiLinker, 1000, 0);
+		wifi_station_connect();
+	}
+	else
+	{
+		INFO("smartcfg\n");
+		smartconfig_start(smartconfig_done);
+	}
 }

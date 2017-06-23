@@ -166,6 +166,7 @@ void ICACHE_FLASH_ATTR print_info()
 
 static void ICACHE_FLASH_ATTR app_init(void)
 {
+
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
   print_info();
   MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
@@ -182,8 +183,8 @@ static void ICACHE_FLASH_ATTR app_init(void)
   MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
   MQTT_OnPublished(&mqttClient, mqttPublishedCb);
   MQTT_OnData(&mqttClient, mqttDataCb);
-	os_printf("*_*Comp app_init\n");
-  WIFI_Connect(STA_SSID, STA_PASS, wifiConnectCb);
+	WIFI_Connect(wifiConnectCb);
+	INFO("*_*Comp app_init\n");
 	//smartconfig_start(smartconfig_done);
 }
 void user_init(void)
@@ -191,7 +192,7 @@ void user_init(void)
 
   os_printf("SDK version:%s\n", system_get_sdk_version());
   smartconfig_set_type(SC_TYPE_ESPTOUCH_AIRKISS); //SC_TYPE_ESPTOUCH,SC_TYPE_AIRKISS,SC_TYPE_ESPTOUCH_AIRKISS
-  wifi_set_opmode(STATION_MODE);
+  //wifi_set_opmode(STATION_MODE);
 	//smartconfig_start(smartconfig_done);
 
   system_init_done_cb(app_init);
