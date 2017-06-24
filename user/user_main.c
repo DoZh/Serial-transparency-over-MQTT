@@ -43,6 +43,7 @@
 
 char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
 char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
+uint8_t Sub2TxQueue = 0;
 
 /******************************************************************************
  * FunctionName : user_rf_cal_sector_set
@@ -160,7 +161,7 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
     uint8_t txNow = 0;
     do
     {
-      txNow = TX_BUFF_SIZE - TX_FIFO_LEN(UART1);
+      txNow = 128 - TX_FIFO_LEN(UART1);
       if(txNow > remainDataLen)
       {
         uart1_tx_buffer(dataBuf + (data_len - remainDataLen), remainDataLen);
@@ -181,6 +182,7 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
 
 void ICACHE_FLASH_ATTR print_info()
 {
+  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
   INFO("\r\n\r\n[INFO] BOOTUP...\r\n");
   INFO("[INFO] SDK: %s\r\n", system_get_sdk_version());
   INFO("[INFO] Chip ID: %08X\r\n", system_get_chip_id());
@@ -191,6 +193,8 @@ void ICACHE_FLASH_ATTR print_info()
   INFO("[INFO] Build time: %s\n", BUID_TIME);
   INFO("[INFO] -------------------------------------------\n");
 
+  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
+  INFO("TX_FIFO_LEN(UART1): %d\n",TX_FIFO_LEN(UART1));
 }
 
 void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
@@ -225,6 +229,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
   MQTT_OnPublished(&mqttClient, mqttPublishedCb);
   MQTT_OnData(&mqttClient, mqttDataCb);
 	WIFI_Connect(wifiConnectCb);
+  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
 	INFO("*_*Comp app_init\n");
 	//smartconfig_start(smartconfig_done);
 }
