@@ -9,6 +9,7 @@
 #define TX_BUFF_SIZE    100
 #define UART0   0
 #define UART1   1
+#define TX_FIFO_LEN(uart_no) ((READ_PERI_REG(UART_STATUS(uart_no))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)
 
 typedef enum {
     FIVE_BITS = 0x0,
@@ -98,4 +99,3 @@ typedef struct {
 void uart_init(UartBautRate uart0_br, UartBautRate uart1_br);
 void uart0_sendStr(const char *str);
 #endif
-

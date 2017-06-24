@@ -15,9 +15,8 @@
 #define MQTT_PASS     "PASS"
 #define MQTT_CLEAN_SESSION 1
 #define MQTT_KEEPALIVE 120
+#define MQTT_QOS 0
 
-#define STA_SSID "SSID"
-#define STA_PASS "PASS"
 
 #define MQTT_RECONNECT_TIMEOUT  5 /*second*/
 

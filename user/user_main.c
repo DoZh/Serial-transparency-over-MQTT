@@ -41,6 +41,8 @@
 #include "smartconfig.h"
 #include "airkiss.h"
 
+char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
+char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
 
 /******************************************************************************
  * FunctionName : user_rf_cal_sector_set
@@ -99,6 +101,17 @@ user_rf_pre_init(void)
 {
 }
 
+bool ICACHE_FLASH_ATTR isExpChannel(uint8_t *mqtt_channel_name,uint8_t *mqtt_type)
+{
+  uint8_t i = 0;
+  for(i = 0; i <= 4; i++)
+  {
+    if(mqtt_channel_name[i+1] != mqtt_type[i])
+      return FALSE;
+  }
+  return TRUE;
+}
+
 MQTT_Client mqttClient;
 static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
 {
@@ -112,14 +125,9 @@ static void ICACHE_FLASH_ATTR mqttConnectedCb(uint32_t *args)
 {
   MQTT_Client* client = (MQTT_Client*)args;
   INFO("MQTT: Connected\r\n");
-  MQTT_Subscribe(client, "/mqtt/topic/0", 0);
-  MQTT_Subscribe(client, "/mqtt/topic/1", 1);
-  MQTT_Subscribe(client, "/mqtt/topic/2", 2);
-
-  MQTT_Publish(client, "/mqtt/topic/0", "hello0", 6, 0, 0);
-  MQTT_Publish(client, "/mqtt/topic/1", "hello1", 6, 1, 0);
-  MQTT_Publish(client, "/mqtt/topic/2", "hello2", 6, 2, 0);
-
+  MQTT_Subscribe(client, mqtt_recv_channel, MQTT_QOS);
+  MQTT_Subscribe(client, mqtt_ctrl_channel, MQTT_QOS);
+  MQTT_Publish(client, mqtt_send_channel, "hello", 6, MQTT_QOS, 0);
 }
 
 static void ICACHE_FLASH_ATTR mqttDisconnectedCb(uint32_t *args)
@@ -145,6 +153,28 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
   os_memcpy(dataBuf, data, data_len);
   dataBuf[data_len] = 0;
   INFO("Receive topic: %s, data: %s \r\n", topicBuf, dataBuf);
+
+  if(isExpChannel(topic,"recv"))
+  {
+    uint16_t  remainDataLen = data_len;
+    uint8_t txNow = 0;
+    do
+    {
+      txNow = TX_BUFF_SIZE - TX_FIFO_LEN(UART1);
+      if(txNow > remainDataLen)
+      {
+        uart1_tx_buffer(dataBuf + (data_len - remainDataLen), remainDataLen);
+        remainDataLen = 0;
+      }
+      else
+        {
+          uart1_tx_buffer(dataBuf + (data_len - remainDataLen), txNow);
+          remainDataLen = remainDataLen - txNow;
+        }
+    }
+    while(remainDataLen);
+  }
+
   os_free(topicBuf);
   os_free(dataBuf);
 }
@@ -163,12 +193,23 @@ void ICACHE_FLASH_ATTR print_info()
 
 }
 
+void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
+{
+  uint8_t sta_mac[6];
+  wifi_get_macaddr(STATION_IF,sta_mac);
+  //os_sprintf(mqtt_send_channel, "/%s", ssid);
+  os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+
+}
 
 static void ICACHE_FLASH_ATTR app_init(void)
 {
 
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
   print_info();
+  conf_mqtt_channel_name();
   MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
   //MQTT_InitConnection(&mqttClient, "192.168.11.122", 1880, 0);
 
@@ -196,7 +237,5 @@ void user_init(void)
 	//smartconfig_start(smartconfig_done);
 
   system_init_done_cb(app_init);
-
-
 
 }
