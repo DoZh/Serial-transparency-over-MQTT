@@ -7,7 +7,7 @@
 
 #define MQTT_HOST     "192.168.0.101" //or "mqtt.yourdomain.com"
 #define MQTT_PORT     1883
-#define MQTT_BUF_SIZE   1024
+#define MQTT_BUF_SIZE   10240  //Recv Buff Size
 #define MQTT_KEEPALIVE    120  /*second*/
 
 #define MQTT_CLIENT_ID    "CLIENT_1234"
@@ -21,7 +21,7 @@
 #define MQTT_RECONNECT_TIMEOUT  5 /*second*/
 
 #define DEFAULT_SECURITY  0
-#define QUEUE_BUFFER_SIZE       2048
+#define QUEUE_BUFFER_SIZE       10240 //Send Queue Size
 
 #define PROTOCOL_NAMEv31  /*MQTT version 3.1 compatible with Mosquitto v0.15*/
 //PROTOCOL_NAMEv311     /*MQTT version 3.11 compatible with https://eclipse.org/paho/clients/testing/*/

@@ -4,9 +4,10 @@
 #include "uart_register.h"
 #include "eagle_soc.h"
 #include "c_types.h"
-
+/*
 #define RX_BUFF_SIZE    256
 #define TX_BUFF_SIZE    100
+*/
 #define UART0   0
 #define UART1   1
 #define TX_FIFO_LEN(uart_no) ((READ_PERI_REG(UART_STATUS(uart_no))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)
