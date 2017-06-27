@@ -52,7 +52,9 @@ uart_config(uint8 uart_no)
   {
     //set rx fifo trigger
     WRITE_PERI_REG(UART_CONF1(uart_no),
-                   ((0x7F & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
+                   ((0x64 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
+                   ((0x7F & UART_RX_TOUT_THRHD) << UART_RX_TOUT_THRHD_S) |
+                   UART_RX_TOUT_EN |
                    //((128 & UART_RX_FLOW_THRHD) << UART_RX_FLOW_THRHD_S) |
                    //UART_RX_FLOW_EN |
                    ((0x0F & UART_TXFIFO_EMPTY_THRHD) << UART_TXFIFO_EMPTY_THRHD_S));
@@ -68,7 +70,7 @@ uart_config(uint8 uart_no)
   //clear all interrupt
   WRITE_PERI_REG(UART_INT_CLR(uart_no), 0xffff);
   //enable rx_interrupt
-  SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_OVF_INT_ENA);
+  SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
 }
 
 LOCAL STATUS

@@ -136,8 +136,8 @@ static void ICACHE_FLASH_ATTR Init_SerialBuff()
 
 static void ICACHE_FLASH_ATTR Rx2PubSend()
 {
-  INFO("@");
-  MQTT_Publish(&mqttClient, mqtt_send_channel, testStr, 1000, MQTT_QOS, 0);
+  //INFO("@");
+  //MQTT_Publish(&mqttClient, mqtt_send_channel, testStr, 1000, MQTT_QOS, 0);
 }
 
 static void ICACHE_FLASH_ATTR init_Rx2PubSender()
@@ -149,7 +149,7 @@ static void ICACHE_FLASH_ATTR init_Rx2PubSender()
 
 static void ICACHE_FLASH_ATTR Sub2TxSend()
 {
-  INFO("#");
+  //INFO("#");
 
 }
 
@@ -157,7 +157,7 @@ static void ICACHE_FLASH_ATTR init_Sub2TxSender()
 {
   os_timer_disarm(&Sub2TxSender);
   os_timer_setfn(&Sub2TxSender, (os_timer_func_t *)Sub2TxSend, NULL);
-  os_timer_arm(&Sub2TxSender, 10, TRUE);//Set Rx2PubSender cycle to 500ms,and repeat
+  os_timer_arm(&Sub2TxSender, 10, TRUE);//Set Sub2TxSender cycle to 10ms,and repeat
 }
 
 
