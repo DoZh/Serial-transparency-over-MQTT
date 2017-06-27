@@ -9,10 +9,10 @@ THISDIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 XTENSA_TOOLS_ROOT ?=
 
 # base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= /home/magi/ESP8266_NONOS_SDK/
+SDK_BASE	?= /mnt/data/syncthing/ElectricalEngineering/ESP8266_NONOS_SDK
 
 #Esptool.py path and port
-ESPTOOL		?= /opt/xtensa-lx106-elf/bin/esptool.py
+ESPTOOL		?= /home/dozh/xtensa-lx106-elf/bin/esptool.py
 ESPPORT		?= /dev/tty.SLAB_USBtoUART
 #ESPPORT		?= /dev/tty.wchusbserial1410
 #ESPDELAY indicates seconds to wait between flashing the two binary images
@@ -44,7 +44,7 @@ USER_LIB				=
 LIB_MODULES			= mqtt
 
 SDK_LIBDIR = lib
-SDK_LIBS = c gcc phy pp net80211 wpa main lwip crypto wps airkiss smartconfig ssl json driver 
+SDK_LIBS = c gcc phy pp net80211 wpa main lwip crypto wps airkiss smartconfig ssl json driver
 SDK_INC = include include/json
 
 
