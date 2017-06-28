@@ -179,7 +179,10 @@ uart0_rx_intr_handler(void *para)
     //QUEUE_Gets(&rxBuff, tmp, &tst, RX_BUFF_SIZE);
     INFO("RX_FIFO_LEN(UART0): %d\n",RX_FIFO_LEN(UART0));
     //while(!(TX_FIFO_LEN(UART0)));
-    while (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
+    /* according to SDK manual, next line should start with while to */
+    /* ensure FIFO empty,but start with if will make interrupt process faster */
+    /* TODO: change type of those function called below to iRAM */
+    if (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
     {
       char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
       for(i=0;i<rxBuffLen;i++) {
@@ -200,7 +203,7 @@ uart0_rx_intr_handler(void *para)
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
     WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_TOUT_INT_CLR);
     INFO("Fifo timeout: %d\n", (READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT);
-    while (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
+    if (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
     {
       char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
       for(i=0;i<rxBuffLen;i++) {
