@@ -41,6 +41,7 @@
 #include "smartconfig.h"
 #include "airkiss.h"
 
+char mqtt_client_id[30];
 char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
 char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
 uint8_t Sub2TxQueue = 0;
@@ -277,6 +278,7 @@ void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
   uint8_t sta_mac[6];
   wifi_get_macaddr(STATION_IF,sta_mac);
   //os_sprintf(mqtt_send_channel, "/%s", ssid);
+  os_sprintf(mqtt_client_id, MQTT_CLIENT_ID_PREFIX"%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
@@ -295,7 +297,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
   MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
   //MQTT_InitConnection(&mqttClient, "192.168.11.122", 1880, 0);
 
-  if ( !MQTT_InitClient(&mqttClient, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION) )
+  if ( !MQTT_InitClient(&mqttClient, mqtt_client_id, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION) )
   {
     INFO("Failed to initialize properly. Check MQTT version.\r\n");
     return;
