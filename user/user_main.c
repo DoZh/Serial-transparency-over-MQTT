@@ -163,31 +163,33 @@ static void ICACHE_FLASH_ATTR init_Rx2PubSender()
 {
   os_timer_disarm(&Rx2PubSender);
   os_timer_setfn(&Rx2PubSender, (os_timer_func_t *)Rx2PubSend, NULL);
-  os_timer_arm(&Rx2PubSender, 500, TRUE);//Set Rx2PubSender cycle to 500ms,and repeat
+  os_timer_arm(&Rx2PubSender, MQTT_PUB_PACK_CYCLE, TRUE);//Set Rx2PubSender cycle to MQTT_PUB_PACK_CYCLE,and repeat
 }
 
 static void ICACHE_FLASH_ATTR Sub2TxSend()
 {
   //INFO("#");
-  /*
-  uint16_t txBuffLen=0;
-  uint16_t  remainDataLen = data_len;
-  uint8_t txNow = 0;
 
-  txBuff.rb.fill_cnt
-  txNow = 128 - TX_FIFO_LEN(UART1);
-  if(txNow > remainDataLen)
+  uint8_t txFree,txNowLen=0;
+  uint16_t txBuffLen;
+
+  if(txBuff.rb.fill_cnt > 0)
+  {
+    txFree = 128 - TX_FIFO_LEN(UART1);
+    char *tmpBuf = (char*)os_zalloc(txFree + 1);
+    while (txBuff.rb.fill_cnt > 0 && txFree > 10)
     {
-      uart1_tx_buffer(dataBuf + (data_len - remainDataLen), remainDataLen);
-      remainDataLen = 0;
+      QUEUE_Gets(&txBuff, tmpBuf + txNowLen , &txBuffLen, txFree);
+      txFree -= txBuffLen;
+      txNowLen += txBuffLen;
     }
-  else
-    {
-      uart1_tx_buffer(dataBuf + (data_len - remainDataLen), txNow);
-      remainDataLen = remainDataLen - txNow;
-    }
-  while(remainDataLen);
-*/
+
+    uart1_tx_buffer(tmpBuf, txNowLen);
+
+    os_free(tmpBuf);
+
+  }
+
 }
 
 static void ICACHE_FLASH_ATTR init_Sub2TxSender()
