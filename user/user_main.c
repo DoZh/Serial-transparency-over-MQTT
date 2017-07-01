@@ -113,10 +113,11 @@ user_rf_pre_init(void)
 bool ICACHE_FLASH_ATTR isExpChannel(uint8_t *mqtt_channel_name,uint8_t *mqtt_type)
 {
   uint8_t i = 0;
-  for(i = 0; i <= 4; i++)
+  while (mqtt_type[i])
   {
-    if(mqtt_channel_name[i+1] != mqtt_type[i])
+    if(mqtt_channel_name[i] != mqtt_type[i])
       return FALSE;
+    i++;
   }
   return TRUE;
 }
@@ -250,14 +251,14 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
   dataBuf[data_len] = 0;
   INFO("Receive topic: %s\r\n", topicBuf);
   //INFO("Receive topic: %s, data: %s \r\n", topicBuf, dataBuf);
-  /*
-  if(isExpChannel(topic,"recv"))
+
+  if(isExpChannel(topic,"/recv/"))
   {
     QUEUE_Puts(&txBuff, data, data_len);
     INFO("*\n");
   }
-  */
-  //else if(isExpChannel(topic,"send"))
+
+  else if(isExpChannel(topic,"/send/"))
   {
     QUEUE_Puts(&txBuff, data, data_len);
     INFO("*%d\n",data_len);
@@ -291,9 +292,9 @@ void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
   wifi_get_macaddr(STATION_IF,sta_mac);
   //os_sprintf(mqtt_send_channel, "/%s", ssid);
   os_sprintf(mqtt_client_id, MQTT_CLIENT_ID_PREFIX"%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
-  os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
-  os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
-  os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
 
 }
 
