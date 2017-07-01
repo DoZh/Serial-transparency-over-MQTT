@@ -47,7 +47,7 @@ void ICACHE_FLASH_ATTR QUEUE_Init(QUEUE *queue, int bufferSize)
 int32_t ICACHE_FLASH_ATTR QUEUE_Puts(QUEUE *queue, uint8_t* buffer, uint16_t len)
 {
   uint32_t ret;
-  
+
   last_rb_p_r = queue->rb.p_r;
   last_rb_p_w = queue->rb.p_w;
   last_fill_cnt = queue->rb.fill_cnt;
@@ -65,6 +65,14 @@ int32_t ICACHE_FLASH_ATTR QUEUE_Gets(QUEUE *queue, uint8_t* buffer, uint16_t* le
 {
 
   return PROTO_ParseRb(&queue->rb, buffer, len, maxLen);
+}
+
+
+int32_t ICACHE_FLASH_ATTR QUEUE_Gets_Divided(QUEUE *queue, uint8_t* buffer, uint16_t* len, uint16_t maxLen)
+{
+
+  return PROTO_ParseRb_Divided(&queue->rb, buffer, len, maxLen);
+
 }
 
 BOOL ICACHE_FLASH_ATTR QUEUE_IsEmpty(QUEUE *queue)

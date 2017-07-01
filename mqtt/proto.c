@@ -46,6 +46,48 @@ I8 ICACHE_FLASH_ATTR PROTO_ParseByte(PROTO_PARSER *parser, U8 value)
   return -1;
 }
 
+I8 ICACHE_FLASH_ATTR PROTO_ParseByte_Extra(PROTO_PARSER *parser, U8 value)
+{
+  switch (value) {
+    case 0x7D:
+      parser->isEsc = 1;
+      break;
+
+    case 0x7E:
+      parser->dataLen = 0;
+      parser->isEsc = 0;
+      parser->isBegin = 1;
+      break;
+
+    case 0x7F:
+      if (parser->callback != NULL)
+        parser->callback();
+      parser->isBegin = 0;
+      return 0;
+      break;
+
+    default:
+      if (parser->isBegin == 0) break;
+
+      if (parser->isEsc) {
+        value ^= 0x20;
+        parser->isEsc = 0;
+      }
+
+      if (parser->dataLen < (parser->bufSize - 1))
+        parser->buf[parser->dataLen++] = value;
+      else if(parser->dataLen < parser->bufSize)
+      {
+        parser->buf[parser->dataLen++] = value;
+        return -2; //buffer full
+      }
+      else
+        return -3;//buffer overload
+      break;
+  }
+  return -1;
+}
+
 I8 ICACHE_FLASH_ATTR PROTO_Parse(PROTO_PARSER *parser, U8 *buf, U16 len)
 {
   while (len--)
@@ -67,6 +109,35 @@ I16 ICACHE_FLASH_ATTR PROTO_ParseRb(RINGBUF* rb, U8 *bufOut, U16* len, U16 maxBu
   }
   return -1;
 }
+
+I16 ICACHE_FLASH_ATTR PROTO_ParseRb_Divided(RINGBUF* rb, U8 *bufOut, U16* len, U16 maxBufLen)
+{
+  U8 c;
+
+  PROTO_PARSER proto;
+  int8_t bufferStatus;
+  PROTO_Init(&proto, NULL, bufOut, maxBufLen);
+  while (RINGBUF_Get(rb, &c) == 0) {
+    bufferStatus = PROTO_ParseByte_Extra(&proto, c);
+    //INFO("%d",bufferStatus);
+    if (bufferStatus == -1)
+      ;
+    else if (bufferStatus == 0) //read complete
+    {
+      *len = proto.dataLen;
+      return 0;
+    }
+    else            //buffer full or overload
+    {
+      //uint8_t strHead = 0x7E;
+      RINGBUF_Undo_Get(rb, 0x7E);
+      *len = proto.dataLen;
+      return -2;
+    }
+  }
+  return -1;
+}
+
 I16 ICACHE_FLASH_ATTR PROTO_Add(U8 *buf, const U8 *packet, I16 bufSize)
 {
   U16 i = 2;
@@ -126,4 +197,3 @@ I16 ICACHE_FLASH_ATTR PROTO_AddRb(RINGBUF *rb, const U8 *packet, I16 len)
 
   return i;
 }
-

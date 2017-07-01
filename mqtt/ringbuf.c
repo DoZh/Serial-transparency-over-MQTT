@@ -60,8 +60,32 @@ I16 ICACHE_FLASH_ATTR RINGBUF_Get(RINGBUF *r, U8* c)
 
   *c = *r->p_r++;               // get the character out
 
-  if (r->p_r >= r->p_o + r->size)       // rollback if write pointer go pass
+  if (r->p_r >= r->p_o + r->size)       // rollback if read pointer go pass
     r->p_r = r->p_o;            // the physical boundary
+
+  return 0;
+}
+
+/**
+* \brief put a character to ring buffer head to undo get func
+* \param r pointer to a ringbuf object
+* \param c character to be put
+* \return 0 if successfull, otherwise failed
+*/
+I16 ICACHE_FLASH_ATTR RINGBUF_Undo_Get(RINGBUF *r, U8 c)
+{
+  if (r->fill_cnt >= r->size)return -1;     // ring buffer is full, this should be atomic operation
+
+
+  r->fill_cnt++;                // increase filled slots count, this should be atomic operation
+
+
+  if (r->p_r <= r->p_o)       // rollback if read pointer go pass
+    r->p_r = r->p_o + r->size ;            // the physical boundary
+
+
+  *(--(r->p_r)) = c;               // put the character in buffer head
+
 
   return 0;
 }

@@ -28,5 +28,7 @@ I16 ICACHE_FLASH_ATTR PROTO_Add(U8 *buf, const U8 *packet, I16 bufSize);
 I16 ICACHE_FLASH_ATTR PROTO_AddRb(RINGBUF *rb, const U8 *packet, I16 len);
 I8 ICACHE_FLASH_ATTR PROTO_ParseByte(PROTO_PARSER *parser, U8 value);
 I16 ICACHE_FLASH_ATTR PROTO_ParseRb(RINGBUF *rb, U8 *bufOut, U16* len, U16 maxBufLen);
-#endif
+I8 ICACHE_FLASH_ATTR PROTO_ParseByte_Extra(PROTO_PARSER *parser, U8 value);
+I16 ICACHE_FLASH_ATTR PROTO_ParseRb_Divided(RINGBUF* rb, U8 *bufOut, U16* len, U16 maxBufLen);
 
+#endif

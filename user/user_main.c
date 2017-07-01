@@ -147,7 +147,6 @@ static void ICACHE_FLASH_ATTR Rx2PubSend()
   {
     QUEUE_Gets(&rxBuff, (tmpBuf + pubBuffLen), &rxBuffLen, RX_BUFF_SIZE);
     pubBuffLen += rxBuffLen;
-
     //INFO("$rb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
     //while(!(TX_FIFO_LEN(UART0)));
   }
@@ -173,6 +172,7 @@ static void ICACHE_FLASH_ATTR Sub2TxSend()
 
   uint8_t txFree,txNowLen=0;
   uint16_t txBuffLen;
+  uint8_t QUEUE_Gets_Status;
 
   if(txBuff.rb.fill_cnt > 0)
   {
@@ -180,9 +180,13 @@ static void ICACHE_FLASH_ATTR Sub2TxSend()
     char *tmpBuf = (char*)os_zalloc(txFree + 1);
     while (txBuff.rb.fill_cnt > 0 && txFree > 10)
     {
-      QUEUE_Gets(&txBuff, tmpBuf + txNowLen , &txBuffLen, txFree);
+      INFO("$rb.fill_cnt is %d\n",txBuff.rb.fill_cnt);
+      QUEUE_Gets_Status = QUEUE_Gets_Divided(&txBuff, tmpBuf + txNowLen , &txBuffLen, txFree);
+      INFO("%d\n",QUEUE_Gets_Status);
       txFree -= txBuffLen;
       txNowLen += txBuffLen;
+      INFO("$getBuffSize %d\n",txBuffLen);
+      INFO("$rb.fill_cnt is %d\n",txBuff.rb.fill_cnt);
     }
 
     uart1_tx_buffer(tmpBuf, txNowLen);
@@ -216,6 +220,8 @@ static void ICACHE_FLASH_ATTR mqttConnectedCb(uint32_t *args)
   MQTT_Subscribe(client, mqtt_recv_channel, MQTT_QOS);
   MQTT_Subscribe(client, mqtt_ctrl_channel, MQTT_QOS);
   //MQTT_Publish(client, mqtt_send_channel, "Hello", 6, MQTT_QOS, 0);
+  MQTT_Subscribe(client, MQTT_EXTRA_SUB_CHANNEL, MQTT_QOS);
+
   init_Rx2PubSender();
   init_Sub2TxSender();
 }
@@ -244,11 +250,17 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
   dataBuf[data_len] = 0;
   INFO("Receive topic: %s\r\n", topicBuf);
   //INFO("Receive topic: %s, data: %s \r\n", topicBuf, dataBuf);
-
+  /*
   if(isExpChannel(topic,"recv"))
   {
     QUEUE_Puts(&txBuff, data, data_len);
     INFO("*\n");
+  }
+  */
+  //else if(isExpChannel(topic,"send"))
+  {
+    QUEUE_Puts(&txBuff, data, data_len);
+    INFO("*%d\n",data_len);
   }
 
   os_free(topicBuf);
