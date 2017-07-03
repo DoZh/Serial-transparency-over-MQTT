@@ -21,6 +21,8 @@ extern UartDevice    UartDev;
 
 extern QUEUE rxBuff, txBuff;
 
+char tmpBufRx[128];
+
 LOCAL void uart0_rx_intr_handler(void *para);
 
 LOCAL void ICACHE_FLASH_ATTR
@@ -171,26 +173,27 @@ uart0_rx_intr_handler(void *para)
   {
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
     WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR);
-    INFO("Fifo full: %d\n", (READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT);
+    //INFO("Fifo full: %d\n", (READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT);
+    //INFO("RX_FIFO_LEN(UART0): %d\n",RX_FIFO_LEN(UART0));
 
     //QUEUE_Puts(&rxBuff, para, RX_FIFO_LEN(UART0));
     //os_memcpy(tmp, para, RX_FIFO_LEN(UART0));
     //INFO("@");
     //QUEUE_Gets(&rxBuff, tmp, &tst, RX_BUFF_SIZE);
-    INFO("RX_FIFO_LEN(UART0): %d\n",RX_FIFO_LEN(UART0));
     //while(!(TX_FIFO_LEN(UART0)));
     /* according to SDK manual, next line should start with while to */
     /* ensure FIFO empty,but start with if will make interrupt process faster */
     /* TODO: change type of those function called below to iRAM */
     if (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
     {
-      char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
+      //char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
+      //char tmpBuf[128];
       for(i=0;i<rxBuffLen;i++) {
-          *(tmpBuf + i) = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+          *(tmpBufRx + i) = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
           //uart_tx_one_char(UART0, *(tmpBuf + i));
       }
-      QUEUE_Puts(&rxBuff, tmpBuf, rxBuffLen);
-      os_free(tmpBuf);
+      QUEUE_Puts(&rxBuff, tmpBufRx, rxBuffLen);
+      //os_free(tmpBuf);
       //uart_tx_one_char(UART0,'#');
     }
     WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR);
@@ -202,15 +205,16 @@ uart0_rx_intr_handler(void *para)
   {
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
     WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_TOUT_INT_CLR);
-    INFO("Fifo timeout: %d\n", (READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT);
+    //INFO("Fifo timeout: %d\n", (READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT);
     if (rxBuffLen = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT)
     {
-      char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
+      //char *tmpBuf = (char*)os_zalloc(rxBuffLen + 1);
+      char tmpBuf[128];
       for(i=0;i<rxBuffLen;i++) {
           *(tmpBuf + i) = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
       }
       QUEUE_Puts(&rxBuff, tmpBuf, rxBuffLen);
-      os_free(tmpBuf);
+      //os_free(tmpBuf);
     }
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
 
