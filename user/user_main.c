@@ -151,21 +151,21 @@ static void ICACHE_FLASH_ATTR Rx2PubSend()
   uint16_t rxBuffLen,readedBuffLen;
   //INFO("rb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
 
-  //char *tmpBuf = (char*)os_zalloc(rxBuff.rb.fill_cnt + 1);
+  char *tmpBuf = (char*)os_zalloc(rxBuff.rb.fill_cnt + 1);
   while (rxBuff.rb.fill_cnt > 0)
   {
-    QUEUE_Gets(&rxBuff, (tmpBufTx + pubBuffLen), &rxBuffLen, RX_BUFF_SIZE);
+    QUEUE_Gets(&rxBuff, (tmpBuf + pubBuffLen), &rxBuffLen, RX_BUFF_SIZE);
     pubBuffLen += rxBuffLen;
     //INFO("$rb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
     //while(!(TX_FIFO_LEN(UART0)));
   }
   if (pubBuffLen)
-    MQTT_Publish(&mqttClient, mqtt_send_channel, tmpBufTx, pubBuffLen, MQTT_QOS, 0);
+    MQTT_Publish(&mqttClient, mqtt_send_channel, tmpBuf, pubBuffLen, MQTT_QOS, 0);
 
   //uart0_tx_buffer(tmpBuf,pubBuffLen);
   //INFO("\nrb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
 
-  //os_free(tmpBuf);
+  os_free(tmpBuf);
 }
 
 static void ICACHE_FLASH_ATTR init_Rx2PubSender()
