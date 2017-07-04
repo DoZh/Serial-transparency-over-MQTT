@@ -198,7 +198,7 @@ static void ICACHE_FLASH_ATTR wifi_check_ip(void *arg)
   if (wifiStatus == STATION_GOT_IP && ipConfig.ip.addr != 0)
   {
     os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
-    os_timer_arm(&WiFiLinker, 2000, 0);
+    os_timer_arm(&WiFiLinker, 20000, 0);
   }
   else
   {
