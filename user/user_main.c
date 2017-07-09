@@ -43,6 +43,7 @@
 #include "ip_addr.h"
 #include "smartconfig.h"
 #include "airkiss.h"
+#include "cJSON.h"
 
 char mqtt_client_id[30];
 char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
@@ -50,6 +51,8 @@ char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
 uint8_t Sub2TxQueue = 0;
 static ETSTimer Rx2PubSender;
 static ETSTimer Sub2TxSender;
+cJSON *jsonRoot = NULL;
+
 
 QUEUE rxBuff, txBuff;
 char tmpBufTx[128];
@@ -118,6 +121,85 @@ user_rf_pre_init(void)
 bool ICACHE_FLASH_ATTR check_memleak_debug_enable(void)
 {
     return MEMLEAK_DEBUG_ENABLE;
+}
+
+/* Create a bunch of objects as demonstration. */
+static int ICACHE_FLASH_ATTR
+print_preallocated(cJSON *root)
+{
+    /* declarations */
+    char *out = NULL;
+    char *buf = NULL;
+    char *buf_fail = NULL;
+    size_t len = 0;
+    size_t len_fail = 0;
+
+    /* formatted print */
+    out = cJSON_Print(root);
+
+    /* create buffer to succeed */
+    /* the extra 5 bytes are because of inaccuracies when reserving memory */
+    len = os_strlen(out) + 5;
+    buf = (char*)os_malloc(len);
+    if (buf == NULL)
+    {
+        os_printf("Failed to allocate memory.\n");
+        //exit(1);
+    }
+
+    /* create buffer to fail */
+    len_fail = os_strlen(out);
+    buf_fail = (char*)os_malloc(len_fail);
+    if (buf_fail == NULL)
+    {
+        os_printf("Failed to allocate memory.\n");
+        //exit(1);
+    }
+
+    /* Print to buffer */
+    if (!cJSON_PrintPreallocated(root, buf, (int)len, 1)) {
+        os_printf("cJSON_PrintPreallocated failed!\n");
+        if (os_strcmp(out, buf) != 0) {
+            os_printf("cJSON_PrintPreallocated not the same as cJSON_Print!\n");
+            os_printf("cJSON_Print result:\n%s\n", out);
+            os_printf("cJSON_PrintPreallocated result:\n%s\n", buf);
+        }
+        os_free(out);
+        os_free(buf_fail);
+        os_free(buf);
+        return -1;
+    }
+
+    /* success */
+    os_printf("%s\n", buf);
+
+    /* force it to fail */
+    if (cJSON_PrintPreallocated(root, buf_fail, (int)len_fail, 1)) {
+        os_printf("cJSON_PrintPreallocated failed to show error with insufficient memory!\n");
+        os_printf("cJSON_Print result:\n%s\n", out);
+        os_printf("cJSON_PrintPreallocated result:\n%s\n", buf_fail);
+        os_free(out);
+        os_free(buf_fail);
+        os_free(buf);
+        return -1;
+    }
+
+    os_free(out);
+    os_free(buf_fail);
+    os_free(buf);
+    return 0;
+}
+
+bool ICACHE_FLASH_ATTR read_config(void)
+{
+  char configBuff[CONFIG_BUFF_SIZE];
+
+  //system_param_load(CONFIG_JSON_ADDR,0,configBuff,CONFIG_BUFF_SIZE);
+  spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
+  jsonRoot = cJSON_Parse(configBuff);
+  print_preallocated(jsonRoot);
+  cJSON_Delete(jsonRoot);
+  return TRUE;
 }
 
 bool ICACHE_FLASH_ATTR isExpChannel(uint8_t *mqtt_channel_name,uint8_t *mqtt_type)
@@ -319,6 +401,9 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
   print_info();
+
+  read_config();
+
   conf_mqtt_channel_name();
 
   Init_SerialBuff();
@@ -339,9 +424,12 @@ static void ICACHE_FLASH_ATTR app_init(void)
   MQTT_OnData(&mqttClient, mqttDataCb);
 	WIFI_Connect(wifiConnectCb);
   //init_MQTT_Rx2PubSender();
+  //cJSON_test();
+
   INFO("memleak_debug_enable %d\n",check_memleak_debug_enable());
   INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
 	INFO("*_*Comp app_init\n");
+
 	//smartconfig_start(smartconfig_done);
 }
 void user_init(void)
