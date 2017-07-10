@@ -27,8 +27,8 @@
 #pragma GCC visibility push(default)
 #endif
 
-/* 修改cJSON，可以在ESP8266中使用 */
-/* 注意，ESP8266不支持浮点数 */
+
+/* Use it in ESP8266 */
 #define USE_IN_ESP8266
 
 #ifndef USE_IN_ESP8266
@@ -2296,6 +2296,13 @@ CJSON_PUBLIC(void) ICACHE_FLASH_ATTR
 cJSON_ReplaceItemInObject(cJSON *object, const char *string, cJSON *newitem)
 {
     replace_item_in_object(object, string, newitem, false);
+}
+
+CJSON_PUBLIC(void) ICACHE_FLASH_ATTR
+cJSON_ReplaceStringInObject(cJSON *object, const char *string, const char *content)
+{
+  cJSON_DeleteItemFromObject(object, string);
+  cJSON_AddStringToObject(object, string, content);
 }
 
 CJSON_PUBLIC(void) ICACHE_FLASH_ATTR

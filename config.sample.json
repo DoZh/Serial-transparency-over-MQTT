@@ -1,0 +1,18 @@
+{
+		"mqtt_host":	"dozh.us",
+		"mqtt_port":	1883,
+		"mqtt_buf_size":	1500,
+		"mqtt_keepalive":	120,
+		"mqtt_client_id_prefix":	"Serial_test_",
+		"mqtt_user":	"",
+		"mqtt_pass":	"",
+		"mqtt_qos":	0,
+		"mqtt_extra_sub_channel":	"/send/DEADBEEF",
+		"rx_buff_size":	1400,
+		"tx_buff_size":	5120,
+		"mqtt_pub_pack_cycle":	100,
+		"mqtt_reconnect_timeout":	5,
+		"default_security":	0,
+		"queue_buffer_size":	5120,
+		"mqtt_clean_session":	1
+}

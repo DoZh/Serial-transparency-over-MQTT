@@ -1,8 +1,0 @@
-{
-		"mqtt_host":	"serial.mqtt.iot.gz.baidubce.com",
-		"mqtt_port":	"1883",
-		"mqtt_buf_size":	"1500",
-		"mqtt_keepalive":	"120",
-		"mqtt_client_id_prefix":	"Serial_test_",
-		"mqtt_user":	"serial/test0"
-}

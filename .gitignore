@@ -5,3 +5,4 @@ firmware/
 .settings/
 .DS_Store
 include/user_config.local.h
+config.json

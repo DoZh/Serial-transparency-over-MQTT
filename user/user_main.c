@@ -197,6 +197,11 @@ bool ICACHE_FLASH_ATTR read_config(void)
   //system_param_load(CONFIG_JSON_ADDR,0,configBuff,CONFIG_BUFF_SIZE);
   spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
   jsonRoot = cJSON_Parse(configBuff);
+
+  //cJSON_GetObjectItem
+
+  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
+
   print_preallocated(jsonRoot);
   cJSON_Delete(jsonRoot);
   return TRUE;

@@ -23,8 +23,8 @@
 #ifndef cJSON__h
 #define cJSON__h
 
-/* ĞŞ¸ÄcJSON£¬¿ÉÒÔÔÚESP8266ÖĞÊ¹ÓÃ */
-/* ×¢Òâ£¬ESP8266²»Ö§³Ö¸¡µãÊı */
+/* ï¿½Ş¸ï¿½cJSONï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ESP8266ï¿½ï¿½Ê¹ï¿½ï¿½ */
+/* ×¢ï¿½â£¬ESP8266ï¿½ï¿½Ö§ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ */
 #define USE_IN_ESP8266
 
 #ifdef __cplusplus
@@ -221,6 +221,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemViaPointer(cJSON * const parent, cJSON
 CJSON_PUBLIC(void) cJSON_ReplaceItemInArray(cJSON *array, int which, cJSON *newitem);
 CJSON_PUBLIC(void) cJSON_ReplaceItemInObject(cJSON *object,const char *string,cJSON *newitem);
 CJSON_PUBLIC(void) cJSON_ReplaceItemInObjectCaseSensitive(cJSON *object,const char *string,cJSON *newitem);
+CJSON_PUBLIC(void) cJSON_ReplaceStringInObject(cJSON *object, const char *string, const char *content);
 
 /* Duplicate a cJSON item */
 CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse);
@@ -246,6 +247,8 @@ CJSON_PUBLIC(void) cJSON_Minify(char *json);
 #define cJSON_AddNumberToObject(object,name,n) cJSON_AddItemToObject(object, name, cJSON_CreateNumber(n))
 #define cJSON_AddStringToObject(object,name,s) cJSON_AddItemToObject(object, name, cJSON_CreateString(s))
 #define cJSON_AddRawToObject(object,name,s) cJSON_AddItemToObject(object, name, cJSON_CreateRaw(s))
+
+//#define cJSON_ReplaceStringInObject(object,name,s) cJSON_ReplaceItemInObject(object, name, cJSON_CreateString(s))
 
 /* When assigning an integer value, it needs to be propagated to valuedouble too. */
 #define cJSON_SetIntValue(object, number) ((object) ? (object)->valueint = (object)->valuedouble = (number) : (number))
