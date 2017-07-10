@@ -369,6 +369,7 @@ parse_number(cJSON * const item, parse_buffer * const input_buffer)
 
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
+        INFO("parse number VOID\n");
         return false;
     }
 
@@ -436,7 +437,7 @@ loop_end:
     input_buffer->offset += (size_t)(after_end - number_c_string);
 
     //return true;
-
+    INFO("parse number ERROR\n");
     return false;
 }
 
@@ -1198,6 +1199,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     if (value == NULL)
     {
         goto fail;
+        INFO("Value ERROR\n");
     }
 
     buffer.content = (const unsigned char*)value;
@@ -1208,12 +1210,14 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     item = cJSON_New_Item(&global_hooks);
     if (item == NULL) /* memory fail */
     {
+        INFO("memory ERROR\n");
         goto fail;
     }
 
     if (!parse_value(item, buffer_skip_whitespace(&buffer)))
     {
         /* parse failure. ep is set. */
+        INFO("parse ERROR\n");
         goto fail;
     }
 
@@ -1223,6 +1227,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
         buffer_skip_whitespace(&buffer);
         if ((buffer.offset >= buffer.length) || buffer_at_offset(&buffer)[0] != '\0')
         {
+            INFO("buffer ERROR\n");
             goto fail;
         }
     }
@@ -1437,11 +1442,13 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
     /* string */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '\"'))
     {
+        INFO("parse string\n");
         return parse_string(item, input_buffer);
     }
     /* number */
     if (can_access_at_index(input_buffer, 0) && ((buffer_at_offset(input_buffer)[0] == '-') || ((buffer_at_offset(input_buffer)[0] >= '0') && (buffer_at_offset(input_buffer)[0] <= '9'))))
     {
+        INFO("parse number\n");
         return parse_number(item, input_buffer);
     }
     /* array */
@@ -1452,6 +1459,7 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
     /* object */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '{'))
     {
+        INFO("parse object\n");
         return parse_object(item, input_buffer);
     }
 
