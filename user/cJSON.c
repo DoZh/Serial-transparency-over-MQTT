@@ -361,7 +361,7 @@ loop_end:
 static cJSON_bool ICACHE_FLASH_ATTR
 parse_number(cJSON * const item, parse_buffer * const input_buffer)
 {
-    int number = 0;
+    int32_t number = 0;
     unsigned char *after_end = NULL;
     unsigned char number_c_string[64];
     //unsigned char decimal_point = get_decimal_point();
@@ -408,7 +408,7 @@ parse_number(cJSON * const item, parse_buffer * const input_buffer)
 
 loop_end:
     number_c_string[i] = '\0';
-    //number = atoi(number_c_string);
+    number = atoi(number_c_string);
 #if 0
     number = strtod((const char*)number_c_string, (char**)&after_end);
     if (number_c_string == after_end)
@@ -436,9 +436,10 @@ loop_end:
 
     input_buffer->offset += (size_t)(after_end - number_c_string);
 
-    //return true;
-    INFO("parse number ERROR\n");
-    return false;
+    INFO("parse number Comp %d\n", number);
+    return true;
+    //INFO("parse number ERROR\n");
+    //return false;
 }
 
 #endif
@@ -1217,7 +1218,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     if (!parse_value(item, buffer_skip_whitespace(&buffer)))
     {
         /* parse failure. ep is set. */
-        INFO("parse ERROR\n");
+        INFO("parse value ERROR\n");
         goto fail;
     }
 
@@ -1235,7 +1236,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     {
         *return_parse_end = (const char*)buffer_at_offset(&buffer);
     }
-
+    INFO("parse Comp\n");
     return item;
 
 fail:
@@ -1268,7 +1269,7 @@ fail:
             global_error = local_error;
         }
     }
-
+    INFO("parse ERROR\n");
     return NULL;
 }
 
@@ -1413,6 +1414,7 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
 {
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
+        INFO("parse VOID\n");
         return false; /* no input */
     }
 
@@ -1454,6 +1456,7 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
     /* array */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '['))
     {
+        INFO("parse array\n");
         return parse_array(item, input_buffer);
     }
     /* object */
@@ -1463,7 +1466,7 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
         return parse_object(item, input_buffer);
     }
 
-
+    INFO("parse none ERROR\n");
     return false;
 }
 
@@ -1745,6 +1748,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         cJSON *new_item = cJSON_New_Item(&(input_buffer->hooks));
         if (new_item == NULL)
         {
+            INFO("allocation failure\n");
             goto fail; /* allocation failure */
         }
 
@@ -1767,6 +1771,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         buffer_skip_whitespace(input_buffer);
         if (!parse_string(current_item, input_buffer))
         {
+            INFO("faile to parse name\n");
             goto fail; /* faile to parse name */
         }
         buffer_skip_whitespace(input_buffer);
@@ -1777,6 +1782,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
 
         if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != ':'))
         {
+            INFO("invalid object\n");
             goto fail; /* invalid object */
         }
 
@@ -1785,14 +1791,26 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         buffer_skip_whitespace(input_buffer);
         if (!parse_value(current_item, input_buffer))
         {
+            INFO("Object parse Value ERROR\n");
             goto fail; /* failed to parse value */
         }
         buffer_skip_whitespace(input_buffer);
+
+        if(input_buffer == NULL)
+          INFO("buffer NULL\n");
+        if(((input_buffer)->offset) >= (input_buffer)->length)
+        {
+          INFO("buffer overflow\noffset:%d\nlength:%d\n", (input_buffer)->offset, (input_buffer)->length);
+
+        }
+        if(!buffer_at_offset(input_buffer)[0] == ',')
+          INFO("buffer_NOT_NEXT\n");
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));
 
     if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != '}'))
     {
+        INFO("expected end of object\n");
         goto fail; /* expected end of object */
     }
 
@@ -1808,6 +1826,7 @@ success:
 fail:
     if (head != NULL)
     {
+        INFO("Object parse Value Fail\n");
         cJSON_Delete(head);
     }
 
