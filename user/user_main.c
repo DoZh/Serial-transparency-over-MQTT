@@ -197,15 +197,16 @@ bool ICACHE_FLASH_ATTR read_config(void)
   //system_param_load(CONFIG_JSON_ADDR,0,configBuff,CONFIG_BUFF_SIZE);
   spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
   INFO("%s\n",configBuff);
-  jsonRoot = cJSON_Parse(configBuff);
-  if(jsonRoot == NULL)
+  if(jsonRoot = cJSON_Parse(configBuff))
     INFO("ERROR\n");
   cJSON *jsonObj;
   if(jsonObj = cJSON_GetObjectItem(jsonRoot, "mqtt_host"))
     INFO("@@@@%s@@@@\n",jsonObj->valuestring);
   else
     INFO("@@@@@@@@\n");
-  //cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
+  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
+  if(jsonObj = cJSON_GetObjectItem(jsonRoot, "mqtt_host"))
+    INFO("@@@@%s@@@@\n",jsonObj->valuestring);
 
   //print_preallocated(jsonRoot);
   cJSON_Delete(jsonRoot);
