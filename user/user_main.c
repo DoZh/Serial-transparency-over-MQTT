@@ -45,6 +45,26 @@
 #include "airkiss.h"
 #include "cJSON.h"
 
+
+char mqtt_host[64];
+int mqtt_port;
+int mqtt_buf_size;
+int mqtt_keepalive;
+char mqtt_user[32];
+char mqtt_pass[64];
+char mqtt_client_id_prefix[16];
+int mqtt_qos;
+int mqtt_extra_sub_channel_enable;
+char mqtt_extra_sub_channel[32];
+int rx_buff_size;
+int tx_buff_size;
+int mqtt_pub_pack_cycle;
+int mqtt_reconnect_timeout;
+int default_security;
+int queue_buffer_size;
+int mqtt_clean_session;
+
+
 char mqtt_client_id[30];
 char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
 char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
@@ -190,6 +210,53 @@ print_preallocated(cJSON *root)
     return 0;
 }
 
+bool ICACHE_FLASH_ATTR parse_json_to_string(cJSON *item, char *namestr, char *writestr)
+{
+  cJSON *jsonObj;
+  if(jsonObj = cJSON_GetObjectItem(item, namestr))
+  {
+    INFO("%s\n", jsonObj->valuestring);
+    os_sprintf(writestr, "%s", jsonObj->valuestring);
+    return TRUE;
+  }
+  else
+    return FALSE;
+}
+
+bool ICACHE_FLASH_ATTR parse_json_to_integer(cJSON *item, char *namestr, int *intvalue)
+{
+  cJSON *jsonObj;
+  if(jsonObj = cJSON_GetObjectItem(item, namestr))
+  {
+    INFO("%d\n", jsonObj->valueint);
+    *intvalue = jsonObj->valueint;
+    return TRUE;
+  }
+  else
+    return FALSE;
+}
+
+bool ICACHE_FLASH_ATTR write_config_to_flash(void)
+{
+  if(!jsonRoot)
+  {
+    INFO("Please parse jsonRoot before write it\n");
+    return false;
+  }
+  char *out = NULL;
+  int writeLen = 0;
+  out = cJSON_Print(jsonRoot);
+  INFO("\n%s\n",out);
+  if (strlen(out)%4 == 0)
+    writeLen = strlen(out);
+  else
+    writeLen = (strlen(out) / 4 + 1) * 4;
+  spi_flash_erase_sector(CONFIG_JSON_ADDR/0x1000);
+  spi_flash_write(CONFIG_JSON_ADDR,out,writeLen);
+  os_free(out);
+  return true;
+}
+
 bool ICACHE_FLASH_ATTR read_config(void)
 {
   char configBuff[CONFIG_BUFF_SIZE];
@@ -197,21 +264,40 @@ bool ICACHE_FLASH_ATTR read_config(void)
   //system_param_load(CONFIG_JSON_ADDR,0,configBuff,CONFIG_BUFF_SIZE);
   spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
   INFO("%s\n",configBuff);
-  if(jsonRoot = cJSON_Parse(configBuff))
-    INFO("ERROR\n");
-  cJSON *jsonObj;
-  if(jsonObj = cJSON_GetObjectItem(jsonRoot, "mqtt_host"))
-    INFO("@@@@%s@@@@\n",jsonObj->valuestring);
-  else
-    INFO("@@@@@@@@\n");
-  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
-  if(jsonObj = cJSON_GetObjectItem(jsonRoot, "mqtt_host"))
-    INFO("@@@@%s@@@@\n",jsonObj->valuestring);
+  jsonRoot = cJSON_Parse(configBuff);
+  //bool returnvalue;
+  int returnvalue = (
+  parse_json_to_string(jsonRoot, "mqtt_host", mqtt_host)&&
+  parse_json_to_string(jsonRoot, "mqtt_client_id_prefix", mqtt_client_id_prefix)&&
+  parse_json_to_string(jsonRoot, "mqtt_user", mqtt_user)&&
+  parse_json_to_string(jsonRoot, "mqtt_pass", mqtt_pass)&&
+  parse_json_to_string(jsonRoot, "mqtt_extra_sub_channel", mqtt_extra_sub_channel)&&
+  parse_json_to_integer(jsonRoot, "mqtt_port", &mqtt_port)&&
+  parse_json_to_integer(jsonRoot, "mqtt_buf_size", &mqtt_buf_size)&&
+  parse_json_to_integer(jsonRoot, "mqtt_keepalive", &mqtt_keepalive)&&
+  parse_json_to_integer(jsonRoot, "mqtt_qos", &mqtt_qos)&&
+  parse_json_to_integer(jsonRoot, "mqtt_extra_sub_channel_enable", &mqtt_extra_sub_channel_enable)&&
+  parse_json_to_integer(jsonRoot, "rx_buff_size", &rx_buff_size)&&
+  parse_json_to_integer(jsonRoot, "tx_buff_size", &tx_buff_size)&&
+  parse_json_to_integer(jsonRoot, "mqtt_pub_pack_cycle", &mqtt_pub_pack_cycle)&&
+  parse_json_to_integer(jsonRoot, "mqtt_reconnect_timeout", &mqtt_reconnect_timeout)&&
+  parse_json_to_integer(jsonRoot, "default_security", &default_security)&&
+  parse_json_to_integer(jsonRoot, "queue_buffer_size", &queue_buffer_size)&&
+  parse_json_to_integer(jsonRoot, "mqtt_clean_session", &mqtt_clean_session)
+  );
+  INFO ("%d", returnvalue);
+  print_preallocated(jsonRoot);
 
-  //print_preallocated(jsonRoot);
+  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
+  write_config_to_flash();
+
+
+
   cJSON_Delete(jsonRoot);
-  return TRUE;
+  return returnvalue;
 }
+
+
 
 bool ICACHE_FLASH_ATTR isExpChannel(uint8_t *mqtt_channel_name,uint8_t *mqtt_type)
 {
