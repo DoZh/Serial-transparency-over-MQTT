@@ -1805,6 +1805,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
 
         }
         if(!buffer_at_offset(input_buffer)[0] == ',')
+          ;
           //INFO("buffer_NOT_NEXT\n");
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));

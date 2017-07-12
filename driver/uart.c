@@ -179,7 +179,7 @@ uart0_rx_intr_handler(void *para)
     //QUEUE_Puts(&rxBuff, para, RX_FIFO_LEN(UART0));
     //os_memcpy(tmp, para, RX_FIFO_LEN(UART0));
     //INFO("@");
-    //QUEUE_Gets(&rxBuff, tmp, &tst, RX_BUFF_SIZE);
+    //QUEUE_Gets(&rxBuff, tmp, &tst, rx_buff_size);
     //while(!(TX_FIFO_LEN(UART0)));
     /* according to SDK manual, next line should start with while to */
     /* ensure FIFO empty,but start with if will make interrupt process faster */

@@ -5,31 +5,31 @@
 
 /*DEFAULT CONFIGURATIONS*/
 
-#define MQTT_HOST     "58.242.95.172" //or "mqtt.yourdomain.com"
-#define MQTT_PORT     1883
-#define MQTT_BUF_SIZE   1500   //Recv Buff Size
-#define MQTT_KEEPALIVE    120  /*second*/
+#define mqtt_host     "58.242.95.172" //or "mqtt.yourdomain.com"
+#define mqtt_port     1883
+#define mqtt_recv_process_buf_size   1500   //Recv Buff Size
+#define mqtt_keepalive    120  /*second*/
 
-#define MQTT_CLIENT_ID_PREFIX    "Serial_test_"
-#define MQTT_USER     "USER"
-#define MQTT_PASS     "PASS"
-#define MQTT_CLEAN_SESSION 1
-#define MQTT_KEEPALIVE 120
-#define MQTT_QOS 0
+#define mqtt_client_id_prefix    "Serial_test_"
+#define mqtt_user     "USER"
+#define mqtt_pass     "PASS"
+#define mqtt_clean_session 1
+#define mqtt_keepalive 120
+#define mqtt_qos 0
 
-//#define MQTT_EXTRA_SUB_CHANNEL "/send/60019480e975"
-#define MQTT_EXTRA_SUB_CHANNEL "/send/60019480dd2d"
+//#define mqtt_extra_sub_channel "/send/60019480e975"
+#define mqtt_extra_sub_channel "/send/60019480dd2d"
 
 //it can't process mqtt package grater than MTU size
-#define RX_BUFF_SIZE 1400
-#define TX_BUFF_SIZE 5120
+#define rx_buff_size 1400
+#define tx_buff_size 5120
 
-#define MQTT_PUB_PACK_CYCLE 100  /*microsecond*/
+#define mqtt_pub_pack_cycle 100  /*microsecond*/
 
-#define MQTT_RECONNECT_TIMEOUT  5 /*second*/
+#define mqtt_reconnect_timeout  5 /*second*/
 
-#define DEFAULT_SECURITY  0
-#define QUEUE_BUFFER_SIZE       5120   //Send Queue Size
+#define default_security  0
+#define queue_buffer_size       5120   //Send Queue Size
 
 #define PROTOCOL_NAMEv31  /*MQTT version 3.1 compatible with Mosquitto v0.15*/
 //PROTOCOL_NAMEv311     /*MQTT version 3.11 compatible with https://eclipse.org/paho/clients/testing/*/

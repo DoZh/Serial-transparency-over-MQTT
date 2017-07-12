@@ -323,10 +323,10 @@ static void ICACHE_FLASH_ATTR Init_SerialBuff()
 {
   INFO("Init_SerialBuff\n");
   while(!(TX_FIFO_LEN(UART0)));
-  QUEUE_Init(&rxBuff, RX_BUFF_SIZE);
-  QUEUE_Init(&txBuff, TX_BUFF_SIZE);
-  //*rxBuff = (char*)os_zalloc(RX_BUFF_SIZE + 1);
-  //*txBuff = (char*)os_zalloc(TX_BUFF_SIZE + 1);
+  QUEUE_Init(&rxBuff, rx_buff_size);
+  QUEUE_Init(&txBuff, tx_buff_size);
+  //*rxBuff = (char*)os_zalloc(rx_buff_size + 1);
+  //*txBuff = (char*)os_zalloc(tx_buff_size + 1);
   INFO("Comp_Init_SerialBuff\n");
 }
 
@@ -340,13 +340,13 @@ static void ICACHE_FLASH_ATTR Rx2PubSend()
   //char *tmpBuf = (char*)os_zalloc(rxBuff.rb.fill_cnt + 1);
   while (rxBuff.rb.fill_cnt > 10)
   {
-    QUEUE_Gets(&rxBuff, (tmpBuffPub + pubBuffLen), &rxBuffLen, RX_BUFF_SIZE);
+    QUEUE_Gets(&rxBuff, (tmpBuffPub + pubBuffLen), &rxBuffLen, rx_buff_size);
     pubBuffLen += rxBuffLen;
     //INFO("$rb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
     //while(!(TX_FIFO_LEN(UART0)));
   }
   if (pubBuffLen)
-    MQTT_Publish(&mqttClient, mqtt_send_channel, tmpBuffPub, pubBuffLen, MQTT_QOS, 0);
+    MQTT_Publish(&mqttClient, mqtt_send_channel, tmpBuffPub, pubBuffLen, mqtt_qos, 0);
 
   //uart0_tx_buffer(tmpBuf,pubBuffLen);
   //INFO("\nrb.fill_cnt is %d\n",rxBuff.rb.fill_cnt);
@@ -358,7 +358,7 @@ static void ICACHE_FLASH_ATTR init_Rx2PubSender()
 {
   os_timer_disarm(&Rx2PubSender);
   os_timer_setfn(&Rx2PubSender, (os_timer_func_t *)Rx2PubSend, NULL);
-  os_timer_arm(&Rx2PubSender, MQTT_PUB_PACK_CYCLE, TRUE);//Set Rx2PubSender cycle to MQTT_PUB_PACK_CYCLE,and repeat
+  os_timer_arm(&Rx2PubSender, mqtt_pub_pack_cycle, TRUE);//Set Rx2PubSender cycle to mqtt_pub_pack_cycle,and repeat
 }
 
 static void ICACHE_FLASH_ATTR Sub2TxSend()
@@ -419,10 +419,11 @@ static void ICACHE_FLASH_ATTR mqttConnectedCb(uint32_t *args)
 {
   MQTT_Client* client = (MQTT_Client*)args;
   INFO("MQTT: Connected\r\n");
-  MQTT_Subscribe(client, mqtt_recv_channel, MQTT_QOS);
-  MQTT_Subscribe(client, mqtt_ctrl_channel, MQTT_QOS);
-  //MQTT_Publish(client, mqtt_send_channel, "Hello", 6, MQTT_QOS, 0);
-  MQTT_Subscribe(client, MQTT_EXTRA_SUB_CHANNEL, MQTT_QOS);
+  MQTT_Subscribe(client, mqtt_recv_channel, mqtt_qos);
+  MQTT_Subscribe(client, mqtt_ctrl_channel, mqtt_qos);
+  //MQTT_Publish(client, mqtt_send_channel, "Hello", 6, mqtt_qos, 0);
+  if (mqtt_extra_sub_channel_enable)
+    MQTT_Subscribe(client, mqtt_extra_sub_channel, mqtt_qos);
 
   init_Rx2PubSender();
   init_Sub2TxSender();
@@ -492,7 +493,7 @@ void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
   uint8_t sta_mac[6];
   wifi_get_macaddr(STATION_IF,sta_mac);
   //os_sprintf(mqtt_send_channel, "/%s", ssid);
-  os_sprintf(mqtt_client_id, MQTT_CLIENT_ID_PREFIX"%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_client_id, "%s""%02x%02x%02x%02x%02x%02x", mqtt_client_id_prefix, MAC2STR(sta_mac));
   os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
@@ -511,10 +512,10 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
   Init_SerialBuff();
 
-  MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
+  MQTT_InitConnection(&mqttClient, mqtt_host, mqtt_port, default_security);
   //MQTT_InitConnection(&mqttClient, "192.168.11.122", 1880, 0);
 
-  if ( !MQTT_InitClient(&mqttClient, mqtt_client_id, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION) )
+  if ( !MQTT_InitClient(&mqttClient, mqtt_client_id, mqtt_user, mqtt_pass, mqtt_keepalive, mqtt_clean_session) )
   {
     INFO("Failed to initialize properly. Check MQTT version.\r\n");
     return;
