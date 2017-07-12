@@ -236,9 +236,21 @@ bool ICACHE_FLASH_ATTR parse_json_to_integer(cJSON *item, char *namestr, int *in
     return FALSE;
 }
 
-bool ICACHE_FLASH_ATTR write_config_to_flash(void)
+bool ICACHE_FLASH_ATTR parse_json_from_flash(void)
 {
-  if(!jsonRoot)
+  char configBuff[CONFIG_BUFF_SIZE];
+  spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
+  INFO("%s\n",configBuff);
+  jsonRoot = cJSON_Parse(configBuff);
+  if (jsonRoot)
+    return true;
+  else
+    return false;
+}
+
+bool ICACHE_FLASH_ATTR write_json_to_flash(void)
+{
+  if (!jsonRoot)
   {
     INFO("Please parse jsonRoot before write it\n");
     return false;
@@ -259,13 +271,9 @@ bool ICACHE_FLASH_ATTR write_config_to_flash(void)
 
 bool ICACHE_FLASH_ATTR read_config(void)
 {
-  char configBuff[CONFIG_BUFF_SIZE];
 
-  //system_param_load(CONFIG_JSON_ADDR,0,configBuff,CONFIG_BUFF_SIZE);
-  spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
-  INFO("%s\n",configBuff);
-  jsonRoot = cJSON_Parse(configBuff);
-  //bool returnvalue;
+  parse_json_from_flash();
+
   int returnvalue = (
   parse_json_to_string(jsonRoot, "mqtt_host", mqtt_host)&&
   parse_json_to_string(jsonRoot, "mqtt_client_id_prefix", mqtt_client_id_prefix)&&
@@ -285,13 +293,11 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_integer(jsonRoot, "queue_buffer_size", &queue_buffer_size)&&
   parse_json_to_integer(jsonRoot, "mqtt_clean_session", &mqtt_clean_session)
   );
-  INFO ("%d", returnvalue);
+  //INFO ("%d", returnvalue);
   print_preallocated(jsonRoot);
 
   cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
-  write_config_to_flash();
-
-
+  write_json_to_flash();
 
   cJSON_Delete(jsonRoot);
   return returnvalue;

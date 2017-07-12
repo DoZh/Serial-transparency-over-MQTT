@@ -369,7 +369,7 @@ parse_number(cJSON * const item, parse_buffer * const input_buffer)
 
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
-        INFO("parse number VOID\n");
+        //INFO("parse number VOID\n");
         return false;
     }
 
@@ -1201,7 +1201,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     if (value == NULL)
     {
         goto fail;
-        INFO("Value ERROR\n");
+        //INFO("Value ERROR\n");
     }
 
     buffer.content = (const unsigned char*)value;
@@ -1212,14 +1212,14 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     item = cJSON_New_Item(&global_hooks);
     if (item == NULL) /* memory fail */
     {
-        INFO("memory ERROR\n");
+        //INFO("memory ERROR\n");
         goto fail;
     }
 
     if (!parse_value(item, buffer_skip_whitespace(&buffer)))
     {
         /* parse failure. ep is set. */
-        INFO("parse value ERROR\n");
+        //INFO("parse value ERROR\n");
         goto fail;
     }
 
@@ -1229,7 +1229,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
         buffer_skip_whitespace(&buffer);
         if ((buffer.offset >= buffer.length) || buffer_at_offset(&buffer)[0] != '\0')
         {
-            INFO("buffer ERROR\n");
+            //INFO("buffer ERROR\n");
             goto fail;
         }
     }
@@ -1237,7 +1237,7 @@ cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool
     {
         *return_parse_end = (const char*)buffer_at_offset(&buffer);
     }
-    INFO("parse Comp\n");
+    //INFO("parse Comp\n");
     return item;
 
 fail:
@@ -1270,7 +1270,7 @@ fail:
             global_error = local_error;
         }
     }
-    INFO("parse ERROR\n");
+    //INFO("parse ERROR\n");
     return NULL;
 }
 
@@ -1415,7 +1415,7 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
 {
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
-        INFO("parse VOID\n");
+        //INFO("parse VOID\n");
         return false; /* no input */
     }
 
@@ -1445,29 +1445,29 @@ parse_value(cJSON * const item, parse_buffer * const input_buffer)
     /* string */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '\"'))
     {
-        INFO("parse string\n");
+        //INFO("parse string\n");
         return parse_string(item, input_buffer);
     }
     /* number */
     if (can_access_at_index(input_buffer, 0) && ((buffer_at_offset(input_buffer)[0] == '-') || ((buffer_at_offset(input_buffer)[0] >= '0') && (buffer_at_offset(input_buffer)[0] <= '9'))))
     {
-        INFO("parse number\n");
+        //INFO("parse number\n");
         return parse_number(item, input_buffer);
     }
     /* array */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '['))
     {
-        INFO("parse array\n");
+        //INFO("parse array\n");
         return parse_array(item, input_buffer);
     }
     /* object */
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '{'))
     {
-        INFO("parse object\n");
+        //INFO("parse object\n");
         return parse_object(item, input_buffer);
     }
 
-    INFO("parse none ERROR\n");
+    //INFO("parse none ERROR\n");
     return false;
 }
 
@@ -1749,7 +1749,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         cJSON *new_item = cJSON_New_Item(&(input_buffer->hooks));
         if (new_item == NULL)
         {
-            INFO("allocation failure\n");
+            //INFO("allocation failure\n");
             goto fail; /* allocation failure */
         }
 
@@ -1772,7 +1772,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         buffer_skip_whitespace(input_buffer);
         if (!parse_string(current_item, input_buffer))
         {
-            INFO("faile to parse name\n");
+            //INFO("faile to parse name\n");
             goto fail; /* faile to parse name */
         }
         buffer_skip_whitespace(input_buffer);
@@ -1783,7 +1783,7 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
 
         if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != ':'))
         {
-            INFO("invalid object\n");
+            //INFO("invalid object\n");
             goto fail; /* invalid object */
         }
 
@@ -1792,26 +1792,26 @@ parse_object(cJSON * const item, parse_buffer * const input_buffer)
         buffer_skip_whitespace(input_buffer);
         if (!parse_value(current_item, input_buffer))
         {
-            INFO("Object parse Value ERROR\n");
+            //INFO("Object parse Value ERROR\n");
             goto fail; /* failed to parse value */
         }
         buffer_skip_whitespace(input_buffer);
 
         if(input_buffer == NULL)
-          INFO("buffer NULL\n");
+          //INFO("buffer NULL\n");
         if(((input_buffer)->offset) >= (input_buffer)->length)
         {
-          INFO("buffer overflow\noffset:%d\nlength:%d\n", (input_buffer)->offset, (input_buffer)->length);
+          //INFO("buffer overflow\noffset:%d\nlength:%d\n", (input_buffer)->offset, (input_buffer)->length);
 
         }
         if(!buffer_at_offset(input_buffer)[0] == ',')
-          INFO("buffer_NOT_NEXT\n");
+          //INFO("buffer_NOT_NEXT\n");
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));
 
     if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != '}'))
     {
-        INFO("expected end of object\n");
+        //INFO("expected end of object\n");
         goto fail; /* expected end of object */
     }
 
@@ -1827,7 +1827,7 @@ success:
 fail:
     if (head != NULL)
     {
-        INFO("Object parse Value Fail\n");
+        //INFO("Object parse Value Fail\n");
         cJSON_Delete(head);
     }
 
