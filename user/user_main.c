@@ -30,6 +30,10 @@
 
 #define MEMLEAK_DEBUG
 
+#define NORMAL_MODE 0
+#define GPIO_CTRL_MODE 1
+#define EDIT_CONF_MODE 2
+
 #include "ets_sys.h"
 #include "driver/uart.h"
 #include "osapi.h"
@@ -48,7 +52,7 @@
 
 char mqtt_host[64];
 int mqtt_port;
-int mqtt_buf_size;
+int mqtt_recv_buf_size;
 int mqtt_keepalive;
 char mqtt_user[32];
 char mqtt_pass[64];
@@ -66,11 +70,16 @@ int mqtt_clean_session;
 
 
 char mqtt_client_id[30];
-char mqtt_send_channel[20],mqtt_recv_channel[20],mqtt_ctrl_channel[20];
-char mqtt_extsend_channel[20],mqtt_extrecv_channel[20];
+char mqtt_send_channel[20],mqtt_recv_channel[20];
+char mqtt_ctrl_channel[20];mqtt_state_channel[20];
+char mqtt_extrecv_channel[20];
+uint8_t control_state = 0;
+uint8_t restart_command_count = 0;
+
 uint8_t Sub2TxQueue = 0;
 static ETSTimer Rx2PubSender;
 static ETSTimer Sub2TxSender;
+static ETSTimer ControlTimer;
 cJSON *jsonRoot = NULL;
 
 
@@ -141,73 +150,6 @@ user_rf_pre_init(void)
 bool ICACHE_FLASH_ATTR check_memleak_debug_enable(void)
 {
     return MEMLEAK_DEBUG_ENABLE;
-}
-
-/* Create a bunch of objects as demonstration. */
-static int ICACHE_FLASH_ATTR
-print_preallocated(cJSON *root)
-{
-    /* declarations */
-    char *out = NULL;
-    char *buf = NULL;
-    char *buf_fail = NULL;
-    size_t len = 0;
-    size_t len_fail = 0;
-
-    /* formatted print */
-    out = cJSON_Print(root);
-
-    /* create buffer to succeed */
-    /* the extra 5 bytes are because of inaccuracies when reserving memory */
-    len = os_strlen(out) + 5;
-    buf = (char*)os_malloc(len);
-    if (buf == NULL)
-    {
-        os_printf("Failed to allocate memory.\n");
-        //exit(1);
-    }
-
-    /* create buffer to fail */
-    len_fail = os_strlen(out);
-    buf_fail = (char*)os_malloc(len_fail);
-    if (buf_fail == NULL)
-    {
-        os_printf("Failed to allocate memory.\n");
-        //exit(1);
-    }
-
-    /* Print to buffer */
-    if (!cJSON_PrintPreallocated(root, buf, (int)len, 1)) {
-        os_printf("cJSON_PrintPreallocated failed!\n");
-        if (os_strcmp(out, buf) != 0) {
-            os_printf("cJSON_PrintPreallocated not the same as cJSON_Print!\n");
-            os_printf("cJSON_Print result:\n%s\n", out);
-            os_printf("cJSON_PrintPreallocated result:\n%s\n", buf);
-        }
-        os_free(out);
-        os_free(buf_fail);
-        os_free(buf);
-        return -1;
-    }
-
-    /* success */
-    os_printf("%s\n", buf);
-
-    /* force it to fail */
-    if (cJSON_PrintPreallocated(root, buf_fail, (int)len_fail, 1)) {
-        os_printf("cJSON_PrintPreallocated failed to show error with insufficient memory!\n");
-        os_printf("cJSON_Print result:\n%s\n", out);
-        os_printf("cJSON_PrintPreallocated result:\n%s\n", buf_fail);
-        os_free(out);
-        os_free(buf_fail);
-        os_free(buf);
-        return -1;
-    }
-
-    os_free(out);
-    os_free(buf_fail);
-    os_free(buf);
-    return 0;
 }
 
 bool ICACHE_FLASH_ATTR parse_json_to_string(cJSON *item, char *namestr, char *writestr)
@@ -281,7 +223,7 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_string(jsonRoot, "mqtt_pass", mqtt_pass)&&
   parse_json_to_string(jsonRoot, "mqtt_extra_sub_channel", mqtt_extra_sub_channel)&&
   parse_json_to_integer(jsonRoot, "mqtt_port", &mqtt_port)&&
-  parse_json_to_integer(jsonRoot, "mqtt_buf_size", &mqtt_buf_size)&&
+  parse_json_to_integer(jsonRoot, "mqtt_recv_buf_size", &mqtt_recv_buf_size)&&
   parse_json_to_integer(jsonRoot, "mqtt_keepalive", &mqtt_keepalive)&&
   parse_json_to_integer(jsonRoot, "mqtt_qos", &mqtt_qos)&&
   parse_json_to_integer(jsonRoot, "mqtt_extra_sub_channel_enable", &mqtt_extra_sub_channel_enable)&&
@@ -294,7 +236,6 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_integer(jsonRoot, "mqtt_clean_session", &mqtt_clean_session)
   );
   //INFO ("%d", returnvalue);
-  print_preallocated(jsonRoot);
 
   cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
   write_json_to_flash();
@@ -304,6 +245,18 @@ bool ICACHE_FLASH_ATTR read_config(void)
 }
 
 
+bool ICACHE_FLASH_ATTR isExpStr(uint8_t *str1,uint8_t *str2, uint8_t strlen)
+{
+  uint8_t i ;
+  for (i = 0; i < strlen; i++)
+  {
+    if (str1[i] != str2[i])
+      return FALSE;
+  }
+  if (str2[i] != '\0')
+    return FALSE;
+  return TRUE;
+}
 
 bool ICACHE_FLASH_ATTR isExpChannel(uint8_t *mqtt_channel_name,uint8_t *mqtt_type)
 {
@@ -364,13 +317,13 @@ static void ICACHE_FLASH_ATTR init_Rx2PubSender()
 static void ICACHE_FLASH_ATTR Sub2TxSend()
 {
   //INFO("#");
-
+  /*
   if(system_get_free_heap_size() > 30000)
   {
-    INFO("Mem availble %lu\n", system_get_free_heap_size());
+    INFO("Mem availble %lu\nSystem goes wrong\n", system_get_free_heap_size());
     system_show_malloc();
   }
-
+  */
   uint8_t txFree,txNowLen=0;
   uint16_t txBuffLen;
   uint8_t QUEUE_Gets_Status;
@@ -404,6 +357,12 @@ static void ICACHE_FLASH_ATTR init_Sub2TxSender()
   os_timer_disarm(&Sub2TxSender);
   os_timer_setfn(&Sub2TxSender, (os_timer_func_t *)Sub2TxSend, NULL);
   os_timer_arm(&Sub2TxSender, 10, TRUE);//Set Sub2TxSender cycle to 10ms,and repeat
+}
+
+static void ICACHE_FLASH_ATTR ControlTimeOut()
+{
+  control_state = NORMAL_MODE;
+  cJSON_Delete(jsonRoot);
 }
 
 
@@ -452,7 +411,7 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
   os_memcpy(dataBuf, data, data_len);
   dataBuf[data_len] = 0;
   INFO("Receive topic: %s\r\n", topicBuf);
-  //INFO("Receive topic: %s, data: %s \r\n", topicBuf, dataBuf);
+  INFO("Receive topic: %s, data: %s \r\n", topicBuf, dataBuf);
 
   if(isExpChannel(topic,"/recv/"))
   {
@@ -465,6 +424,52 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
     QUEUE_Puts(&txBuff, data, data_len);
     INFO("*%d\n",data_len);
   }
+  else if(isExpChannel(topic,"/ctrl/"))
+  {
+    os_timer_disarm(&ControlTimer);
+    if (control_state == NORMAL_MODE)
+    {
+      if(isExpStr(data,"reset "CONFIG_PASSWD, data_len))
+      {
+        if(++restart_command_count >= 3)
+        {
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "System Restart NOW!", 19, mqtt_qos, 0);
+          system_restart();
+        }
+        else
+        {
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Repeat it, please.", 18, mqtt_qos, 0);
+        }
+      }
+      else if(isExpStr(data,"edit_config "CONFIG_PASSWD, data_len))
+      {
+        restart_command_count = 0;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to EDIT_CONF_MODE", 23, mqtt_qos, 0);
+        control_state = EDIT_CONF_MODE;
+      }
+      else if(isExpStr(data,"control_gpio", data_len))
+      {
+        restart_command_count = 0;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to GPIO_CTRL_MODE", 23, mqtt_qos, 0);
+        control_state = GPIO_CTRL_MODE;
+      }
+      else
+      {
+        restart_command_count = 0;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
+      }
+    }
+    else if (control_state == GPIO_CTRL_MODE)
+    {
+
+    }
+    else if (control_state == EDIT_CONF_MODE)
+    {
+
+    }
+    os_timer_setfn(&ControlTimer, (os_timer_func_t *)ControlTimeOut, NULL);
+    os_timer_arm(&ControlTimer, 60000, FALSE);
+  }
 
   os_free(topicBuf);
   os_free(dataBuf);
@@ -473,7 +478,7 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
 
 void ICACHE_FLASH_ATTR print_info()
 {
-  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
+  //INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
   INFO("\r\n\r\n[INFO] BOOTUP...\r\n");
   INFO("[INFO] SDK: %s\r\n", system_get_sdk_version());
   INFO("[INFO] Chip ID: %08X\r\n", system_get_chip_id());
@@ -484,8 +489,8 @@ void ICACHE_FLASH_ATTR print_info()
   INFO("[INFO] Build time: %s\n", BUID_TIME);
   INFO("[INFO] -------------------------------------------\n");
 
-  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
-  INFO("TX_FIFO_LEN(UART1): %d\n",TX_FIFO_LEN(UART1));
+  //INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
+  //INFO("TX_FIFO_LEN(UART1): %d\n",TX_FIFO_LEN(UART1));
 }
 
 void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
@@ -494,9 +499,10 @@ void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
   wifi_get_macaddr(STATION_IF,sta_mac);
   //os_sprintf(mqtt_send_channel, "/%s", ssid);
   os_sprintf(mqtt_client_id, "%s""%02x%02x%02x%02x%02x%02x", mqtt_client_id_prefix, MAC2STR(sta_mac));
-  os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
-  os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
-  os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x/%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_send_channel, "/send/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_state_channel, "/state/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
 
 }
 
