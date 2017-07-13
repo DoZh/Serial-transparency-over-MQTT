@@ -33,6 +33,8 @@
 #define NORMAL_MODE 0
 #define GPIO_CTRL_MODE 1
 #define EDIT_CONF_MODE 2
+#define AUTHING_MODE 3
+#define RESET_MODE 4
 
 #include "ets_sys.h"
 #include "driver/uart.h"
@@ -67,14 +69,17 @@ int mqtt_reconnect_timeout;
 int default_security;
 int queue_buffer_size;
 int mqtt_clean_session;
-
+char config_passwd[32];
 
 char mqtt_client_id[30];
 char mqtt_send_channel[20],mqtt_recv_channel[20];
 char mqtt_ctrl_channel[20];mqtt_state_channel[20];
 char mqtt_extrecv_channel[20];
+
 uint8_t control_state = 0;
+uint8_t expect_mode = 0;
 uint8_t restart_command_count = 0;
+uint8_t wrong_passwd_count = 0;
 
 uint8_t Sub2TxQueue = 0;
 static ETSTimer Rx2PubSender;
@@ -233,7 +238,8 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_integer(jsonRoot, "mqtt_reconnect_timeout", &mqtt_reconnect_timeout)&&
   parse_json_to_integer(jsonRoot, "default_security", &default_security)&&
   parse_json_to_integer(jsonRoot, "queue_buffer_size", &queue_buffer_size)&&
-  parse_json_to_integer(jsonRoot, "mqtt_clean_session", &mqtt_clean_session)
+  parse_json_to_integer(jsonRoot, "mqtt_clean_session", &mqtt_clean_session)&&
+  parse_json_to_string(jsonRoot, "config_passwd", config_passwd)
   );
   //INFO ("%d", returnvalue);
 
@@ -361,8 +367,12 @@ static void ICACHE_FLASH_ATTR init_Sub2TxSender()
 
 static void ICACHE_FLASH_ATTR ControlTimeOut()
 {
+  wrong_passwd_count = 0;
+  expect_mode = NORMAL_MODE;
   control_state = NORMAL_MODE;
-  cJSON_Delete(jsonRoot);
+  if (jsonRoot)
+    cJSON_Delete(jsonRoot);
+  MQTT_Publish(&mqttClient, mqtt_state_channel, "command timeout, back to NORMAL_MODE", 36, mqtt_qos, 0);
 }
 
 
@@ -429,23 +439,26 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
     os_timer_disarm(&ControlTimer);
     if (control_state == NORMAL_MODE)
     {
-      if(isExpStr(data,"reset "CONFIG_PASSWD, data_len))
+      if(isExpStr(data,"restart_system", data_len))
       {
         if(++restart_command_count >= 3)
         {
-          MQTT_Publish(&mqttClient, mqtt_state_channel, "System Restart NOW!", 19, mqtt_qos, 0);
-          system_restart();
+          restart_command_count = 0;
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Please enter password", 21, mqtt_qos, 0);
+          control_state = AUTHING_MODE;
+          expect_mode = RESET_MODE;
         }
         else
         {
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Repeat it, please.", 18, mqtt_qos, 0);
         }
       }
-      else if(isExpStr(data,"edit_config "CONFIG_PASSWD, data_len))
+      else if(isExpStr(data,"edit_config", data_len))
       {
         restart_command_count = 0;
-        MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to EDIT_CONF_MODE", 23, mqtt_qos, 0);
-        control_state = EDIT_CONF_MODE;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Please enter password", 21, mqtt_qos, 0);
+        control_state = AUTHING_MODE;
+        expect_mode = EDIT_CONF_MODE;
       }
       else if(isExpStr(data,"control_gpio", data_len))
       {
@@ -459,16 +472,65 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
         MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
       }
     }
+    else if (control_state == AUTHING_MODE)
+    {
+      if(isExpStr(data, config_passwd, data_len))
+      {
+        wrong_passwd_count = 0;
+        if (expect_mode == RESET_MODE)
+        {
+          expect_mode = NORMAL_MODE;
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "System Restart NOW!", 19, mqtt_qos, 0);
+          INFO("System Restart NOW!");
+          system_restart();
+        }
+        else if(expect_mode == EDIT_CONF_MODE)
+        {
+          expect_mode = NORMAL_MODE;
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to EDIT_CONF_MODE", 23, mqtt_qos, 0);
+          parse_json_from_flash();
+          control_state = EDIT_CONF_MODE;
+        }
+      }
+      else
+      {
+        if (++wrong_passwd_count >= 3)
+        {
+          wrong_passwd_count = 0;
+          expect_mode = NORMAL_MODE;
+          control_state = NORMAL_MODE;
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "too much incorrect attempts", 27, mqtt_qos, 0);
+        }
+        else
+        {
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "password WRONG, please retry", 28, mqtt_qos, 0);
+        }
+      }
+    }
     else if (control_state == GPIO_CTRL_MODE)
     {
-
+      if(isExpStr(data, "exit", 4))
+      {
+        expect_mode = NORMAL_MODE;
+        control_state = NORMAL_MODE;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Back to NORMAL_MODE", 19, mqtt_qos, 0);
+      }
     }
     else if (control_state == EDIT_CONF_MODE)
     {
-
+      if(isExpStr(data, "exit", 4))
+      {
+        expect_mode = NORMAL_MODE;
+        control_state = NORMAL_MODE;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Back to NORMAL_MODE", 19, mqtt_qos, 0);
+      }
     }
-    os_timer_setfn(&ControlTimer, (os_timer_func_t *)ControlTimeOut, NULL);
-    os_timer_arm(&ControlTimer, 60000, FALSE);
+
+    if (control_state != NORMAL_MODE)
+    {
+      os_timer_setfn(&ControlTimer, (os_timer_func_t *)ControlTimeOut, NULL);
+      os_timer_arm(&ControlTimer, 60000, FALSE);
+    }
   }
 
   os_free(topicBuf);
