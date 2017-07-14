@@ -76,6 +76,9 @@ char mqtt_send_channel[20],mqtt_recv_channel[20];
 char mqtt_ctrl_channel[20];mqtt_state_channel[20];
 char mqtt_extrecv_channel[20];
 
+char mqtt_online_msg[21];
+char mqtt_offline_msg[22];
+
 uint8_t control_state = 0;
 uint8_t expect_mode = 0;
 uint8_t restart_command_count = 0;
@@ -242,9 +245,6 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_string(jsonRoot, "config_passwd", config_passwd)
   );
   //INFO ("%d", returnvalue);
-
-  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
-  write_json_to_flash();
 
   cJSON_Delete(jsonRoot);
   return returnvalue;
@@ -509,20 +509,70 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
     }
     else if (control_state == GPIO_CTRL_MODE)
     {
-      if(isExpStr(data, "exit", 4))
+      if(isExpStr(data, "exit", data_len))
       {
         expect_mode = NORMAL_MODE;
         control_state = NORMAL_MODE;
+        if (jsonRoot)
+          cJSON_Delete(jsonRoot);
         MQTT_Publish(&mqttClient, mqtt_state_channel, "Back to NORMAL_MODE", 19, mqtt_qos, 0);
+      }
+      else
+      {
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
       }
     }
     else if (control_state == EDIT_CONF_MODE)
     {
-      if(isExpStr(data, "exit", 4))
+      if(isExpStr(data, "save_config_to_flash", data_len))
+      {
+        write_json_to_flash();
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Config saved to flash", 21, mqtt_qos, 0);
+      }
+      else if(isExpStr(data, "exit", data_len))
       {
         expect_mode = NORMAL_MODE;
         control_state = NORMAL_MODE;
+        if (jsonRoot)
+          cJSON_Delete(jsonRoot);
         MQTT_Publish(&mqttClient, mqtt_state_channel, "Back to NORMAL_MODE", 19, mqtt_qos, 0);
+      }
+      else
+      {
+        uint8_t i;
+        uint8_t keylen = 0;
+        char keyname[data_len + 1];
+        for (i = 0; *(data + i) != ' ' && i < data_len; i++)
+        {
+          keyname[i] = *(data + i);
+        }
+        keylen = i;
+        keyname[keylen] = '\0';
+        if (cJSON_HasObjectItem(jsonRoot, keyname) && i < data_len)
+        {
+          uint8_t contentlen = 0;
+          char content[data_len - keylen + 1];
+          for (i++ ; *(data + i) != ' ' && i < data_len; i++)
+          {
+            contentlen = i - keylen;
+            content[contentlen - 1] = *(data + i);
+          }
+          content[contentlen] = '\0';
+          //INFO("%s\n",content);
+          cJSON *childObj;
+          childObj = cJSON_GetObjectItem(jsonRoot, keyname);
+          if(cJSON_IsNumber(childObj))
+          {
+            cJSON_SetNumberValue(childObj, atoi(content));
+          }
+          else
+          {
+            cJSON_ReplaceStringInObject(jsonRoot, keyname, content);
+          }
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Updated config", 14, mqtt_qos, 0);
+        }
+        else
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
       }
     }
 
@@ -565,6 +615,8 @@ void ICACHE_FLASH_ATTR conf_mqtt_channel_name()
   os_sprintf(mqtt_recv_channel, "/recv/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_ctrl_channel, "/ctrl/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
   os_sprintf(mqtt_state_channel, "/state/""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_online_msg, "online ""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
+  os_sprintf(mqtt_offline_msg, "offline ""%02x%02x%02x%02x%02x%02x", MAC2STR(sta_mac));
 
 }
 
@@ -589,7 +641,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
     return;
   }
   //MQTT_InitClient(&mqttClient, "client_id", "user", "pass", 120, 1);
-  MQTT_InitLWT(&mqttClient, "/lwt", "offline", 0, 0);
+  //MQTT_InitLWT(&mqttClient, "/lwt", "offline", 0, 0);
   MQTT_OnConnected(&mqttClient, mqttConnectedCb);
   MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
   MQTT_OnPublished(&mqttClient, mqttPublishedCb);
@@ -601,6 +653,9 @@ static void ICACHE_FLASH_ATTR app_init(void)
   INFO("memleak_debug_enable %d\n",check_memleak_debug_enable());
   INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
 	INFO("*_*Comp app_init\n");
+
+  MQTT_InitLWT(&mqttClient, mqtt_state_channel, mqtt_offline_msg, mqtt_qos, 0);
+  MQTT_Publish(&mqttClient, mqtt_state_channel, mqtt_online_msg, 19, mqtt_qos, 0);
 
 	//smartconfig_start(smartconfig_done);
 }
