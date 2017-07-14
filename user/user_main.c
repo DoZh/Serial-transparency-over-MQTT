@@ -35,6 +35,7 @@
 #define EDIT_CONF_MODE 2
 #define AUTHING_MODE 3
 #define RESET_MODE 4
+#define UPDATE_JSON_MODE 5
 
 #include "ets_sys.h"
 #include "driver/uart.h"
@@ -466,6 +467,13 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
         MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to GPIO_CTRL_MODE", 23, mqtt_qos, 0);
         control_state = GPIO_CTRL_MODE;
       }
+      else if(isExpStr(data,"update_json_file", data_len))
+      {
+        restart_command_count = 0;
+        MQTT_Publish(&mqttClient, mqtt_state_channel, "Please enter password", 23, mqtt_qos, 0);
+        control_state = AUTHING_MODE;
+        expect_mode = UPDATE_JSON_MODE;
+      }
       else
       {
         restart_command_count = 0;
@@ -490,6 +498,14 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to EDIT_CONF_MODE", 23, mqtt_qos, 0);
           parse_json_from_flash();
           control_state = EDIT_CONF_MODE;
+        }
+        else if(expect_mode == UPDATE_JSON_MODE)
+        {
+          expect_mode = NORMAL_MODE;
+          char configBuff[CONFIG_BUFF_SIZE];
+          spi_flash_read(CONFIG_JSON_ADDR,configBuff,CONFIG_BUFF_SIZE);
+          MQTT_Publish(&mqttClient, mqtt_state_channel, configBuff, CONFIG_BUFF_SIZE, mqtt_qos, 0);
+          control_state = UPDATE_JSON_MODE;
         }
       }
       else
@@ -569,12 +585,54 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
           {
             cJSON_ReplaceStringInObject(jsonRoot, keyname, content);
           }
+          cJSON_Delete(childObj);
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Updated config", 14, mqtt_qos, 0);
         }
         else
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
       }
     }
+    else if (control_state == UPDATE_JSON_MODE)
+    {
+      if(data_len <= CONFIG_BUFF_SIZE)
+      {
+        char jsonstr[data_len + 1];
+        os_memcpy(jsonstr, data, data_len);
+        jsonstr[data_len + 1] = '\0';
+        if (jsonRoot)
+          cJSON_Delete(jsonRoot);
+        jsonRoot = cJSON_Parse(jsonstr);
+        if(jsonRoot)
+        {
+          char *out = NULL;
+          int writeLen = 0;
+          out = cJSON_Print(jsonRoot);
+          INFO("\n%s\n",out);
+          if (strlen(out)%4 == 0)
+            writeLen = strlen(out);
+          else
+            writeLen = (strlen(out) / 4 + 1) * 4;
+          spi_flash_erase_sector(CONFIG_JSON_ADDR/0x1000);
+          spi_flash_write(CONFIG_JSON_ADDR,out,writeLen);
+          os_free(out);
+          cJSON_Delete(jsonRoot);
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Update Complete, System Restart NOW!", 36, mqtt_qos, 0);
+          INFO("Update Complete, System Restart NOW!");
+          system_restart();
+        }
+        else if(isExpStr(data,"exit", data_len))
+        {
+          expect_mode = NORMAL_MODE;
+          control_state = NORMAL_MODE;
+          if (jsonRoot)
+            cJSON_Delete(jsonRoot);
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Back to NORMAL_MODE", 19, mqtt_qos, 0);
+        }
+        else
+          MQTT_Publish(&mqttClient, mqtt_state_channel, "Json file ERROR", 15, mqtt_qos, 0);
+      }
+    }
+
 
     if (control_state != NORMAL_MODE)
     {
