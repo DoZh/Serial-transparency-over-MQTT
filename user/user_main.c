@@ -161,6 +161,73 @@ bool ICACHE_FLASH_ATTR check_memleak_debug_enable(void)
     return MEMLEAK_DEBUG_ENABLE;
 }
 
+/* Create a bunch of objects as demonstration. */
+static int ICACHE_FLASH_ATTR
+print_preallocated(cJSON *root)
+{
+    /* declarations */
+    char *out = NULL;
+    char *buf = NULL;
+    char *buf_fail = NULL;
+    size_t len = 0;
+    size_t len_fail = 0;
+
+    /* formatted print */
+    out = cJSON_Print(root);
+
+    /* create buffer to succeed */
+    /* the extra 5 bytes are because of inaccuracies when reserving memory */
+    len = os_strlen(out) + 5;
+    buf = (char*)os_malloc(len);
+    if (buf == NULL)
+    {
+        os_printf("Failed to allocate memory.\n");
+        //exit(1);
+    }
+
+    /* create buffer to fail */
+    len_fail = os_strlen(out);
+    buf_fail = (char*)os_malloc(len_fail);
+    if (buf_fail == NULL)
+    {
+        os_printf("Failed to allocate memory.\n");
+        //exit(1);
+    }
+
+    /* Print to buffer */
+    if (!cJSON_PrintPreallocated(root, buf, (int)len, 1)) {
+        os_printf("cJSON_PrintPreallocated failed!\n");
+        if (os_strcmp(out, buf) != 0) {
+            os_printf("cJSON_PrintPreallocated not the same as cJSON_Print!\n");
+            os_printf("cJSON_Print result:\n%s\n", out);
+            os_printf("cJSON_PrintPreallocated result:\n%s\n", buf);
+        }
+        os_free(out);
+        os_free(buf_fail);
+        os_free(buf);
+        return -1;
+    }
+
+    /* success */
+    os_printf("%s\n", buf);
+
+    /* force it to fail */
+    if (cJSON_PrintPreallocated(root, buf_fail, (int)len_fail, 1)) {
+        os_printf("cJSON_PrintPreallocated failed to show error with insufficient memory!\n");
+        os_printf("cJSON_Print result:\n%s\n", out);
+        os_printf("cJSON_PrintPreallocated result:\n%s\n", buf_fail);
+        os_free(out);
+        os_free(buf_fail);
+        os_free(buf);
+        return -1;
+    }
+
+    os_free(out);
+    os_free(buf_fail);
+    os_free(buf);
+    return 0;
+}
+
 bool ICACHE_FLASH_ATTR parse_json_to_string(cJSON *item, char *namestr, char *writestr)
 {
   cJSON *jsonObj;
@@ -246,6 +313,9 @@ bool ICACHE_FLASH_ATTR read_config(void)
   parse_json_to_string(jsonRoot, "config_passwd", config_passwd)
   );
   //INFO ("%d", returnvalue);
+
+  cJSON_ReplaceStringInObject(jsonRoot, "mqtt_host", "dozh.us");
+  write_json_to_flash();
 
   cJSON_Delete(jsonRoot);
   return returnvalue;
@@ -555,8 +625,10 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
       }
       else
       {
+        INFO("%s\n",cJSON_Print(jsonRoot));
         uint8_t i;
         uint8_t keylen = 0;
+        cJSON *childObj;
         char keyname[data_len + 1];
         for (i = 0; *(data + i) != ' ' && i < data_len; i++)
         {
@@ -564,8 +636,13 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
         }
         keylen = i;
         keyname[keylen] = '\0';
-        if (cJSON_HasObjectItem(jsonRoot, keyname) && i < data_len)
+        INFO("%s\n%d\n",keyname, keylen);
+        while(!(TX_FIFO_LEN(UART0)));
+        childObj = cJSON_GetObjectItem(jsonRoot, keyname);
+        if (childObj && i < data_len)
         {
+          INFO("In cJSON_HasObjectItem\n");
+          while(!(TX_FIFO_LEN(UART0)));
           uint8_t contentlen = 0;
           char content[data_len - keylen + 1];
           for (i++ ; *(data + i) != ' ' && i < data_len; i++)
@@ -574,22 +651,25 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
             content[contentlen - 1] = *(data + i);
           }
           content[contentlen] = '\0';
-          //INFO("%s\n",content);
-          cJSON *childObj;
-          childObj = cJSON_GetObjectItem(jsonRoot, keyname);
+          INFO("%s\n%s\n",keyname, content);
+          while(!(TX_FIFO_LEN(UART0)));
           if(cJSON_IsNumber(childObj))
           {
+            INFO("start cJSON_SetNumberValue\n");
             cJSON_SetNumberValue(childObj, atoi(content));
           }
           else
           {
+            INFO("start cJSON_ReplaceStringInObject\n");
             cJSON_ReplaceStringInObject(jsonRoot, keyname, content);
           }
           cJSON_Delete(childObj);
+          INFO("Comp Updated config\n");
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Updated config", 14, mqtt_qos, 0);
         }
         else
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Command WRONG", 13, mqtt_qos, 0);
+        INFO("%s\n",cJSON_Print(jsonRoot));
       }
     }
     else if (control_state == UPDATE_JSON_MODE)
@@ -637,7 +717,7 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
     if (control_state != NORMAL_MODE)
     {
       os_timer_setfn(&ControlTimer, (os_timer_func_t *)ControlTimeOut, NULL);
-      os_timer_arm(&ControlTimer, 60000, FALSE);
+      os_timer_arm(&ControlTimer, CONTROL_TIMEOUT, FALSE);
     }
   }
 

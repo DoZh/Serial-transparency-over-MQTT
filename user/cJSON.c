@@ -51,6 +51,7 @@
 #include "mem.h"
 #include "ets_sys.h"
 #include "osapi.h"
+#include "driver/uart.h"
 
 #endif
 
@@ -1297,12 +1298,14 @@ print(const cJSON * const item, cJSON_bool format, const internal_hooks * const 
     buffer->hooks = *hooks;
     if (buffer->buffer == NULL)
     {
+        INFO("create buffer NULL ERROR\n");
         goto fail;
     }
 
     /* print the value */
     if (!print_value(item, buffer))
     {
+        INFO("print the value func ERROR\n");
         goto fail;
     }
     update_offset(buffer);
@@ -1313,6 +1316,7 @@ print(const cJSON * const item, cJSON_bool format, const internal_hooks * const 
         printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->length);
         buffer->buffer = NULL;
         if (printed == NULL) {
+            INFO("reallocate unavailable ERROR\n");
             goto fail;
         }
     }
@@ -1321,6 +1325,7 @@ print(const cJSON * const item, cJSON_bool format, const internal_hooks * const 
         printed = (unsigned char*) hooks->allocate(buffer->offset + 1);
         if (printed == NULL)
         {
+            INFO("copy the JSON over to a new buffer ERROR\n");
             goto fail;
         }
         os_memcpy(printed, buffer->buffer, cjson_min(buffer->length, buffer->offset + 1));
@@ -1479,6 +1484,7 @@ print_value(const cJSON * const item, printbuffer * const output_buffer)
 
     if ((item == NULL) || (output_buffer == NULL))
     {
+        INFO("item or buffer NULL ERROR\n");
         return false;
     }
 
@@ -1512,6 +1518,7 @@ print_value(const cJSON * const item, printbuffer * const output_buffer)
             return true;
 
         case cJSON_Number:
+          INFO("print_number\n");
             return print_number(item, output_buffer);
 
         case cJSON_Raw:
@@ -1546,6 +1553,7 @@ print_value(const cJSON * const item, printbuffer * const output_buffer)
             return print_object(item, output_buffer);
 
         default:
+            INFO("type NULL ERROR\n");
             return false;
     }
 }
@@ -2011,16 +2019,24 @@ get_object_item(const cJSON * const object, const char * const name, const cJSON
     current_element = object->child;
     if (case_sensitive)
     {
+        INFO("%p\n",current_element);
+        while(!(TX_FIFO_LEN(UART0)));
         while ((current_element != NULL) && (os_strcmp(name, current_element->string) != 0))
         {
             current_element = current_element->next;
+            INFO("%p\n",current_element);
+            while(!(TX_FIFO_LEN(UART0)));
         }
     }
     else
     {
+        INFO("%p\n",current_element);
+        while(!(TX_FIFO_LEN(UART0)));
         while ((current_element != NULL) && (case_insensitive_strcmp((const unsigned char*)name, (const unsigned char*)(current_element->string)) != 0))
         {
             current_element = current_element->next;
+            INFO("%p\n",current_element);
+            while(!(TX_FIFO_LEN(UART0)));
         }
     }
 
