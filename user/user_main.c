@@ -281,13 +281,13 @@ MQTT_Client mqttClient;
 
 static void ICACHE_FLASH_ATTR Init_SerialBuff()
 {
-  INFO("Init_SerialBuff\n");
+  //INFO("Init_SerialBuff\n");
   while(!(TX_FIFO_LEN(UART0)));
   QUEUE_Init(&rxBuff, rx_buff_size);
   QUEUE_Init(&txBuff, tx_buff_size);
   //*rxBuff = (char*)os_zalloc(rx_buff_size + 1);
   //*txBuff = (char*)os_zalloc(tx_buff_size + 1);
-  INFO("Comp_Init_SerialBuff\n");
+  //INFO("Comp_Init_SerialBuff\n");
 }
 
 static void ICACHE_FLASH_ATTR Rx2PubSend()
@@ -497,6 +497,9 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
           expect_mode = NORMAL_MODE;
           MQTT_Publish(&mqttClient, mqtt_state_channel, "Going to EDIT_CONF_MODE", 23, mqtt_qos, 0);
           parse_json_from_flash();
+          char *dataBuf = cJSON_Print(jsonRoot);
+          MQTT_Publish(&mqttClient, mqtt_state_channel, dataBuf, os_strlen(dataBuf), mqtt_qos, 0);
+          os_free(dataBuf);
           control_state = EDIT_CONF_MODE;
         }
         else if(expect_mode == UPDATE_JSON_MODE)
@@ -544,6 +547,8 @@ static void ICACHE_FLASH_ATTR mqttDataCb(uint32_t *args, const char* topic, uint
       {
         write_json_to_flash();
         MQTT_Publish(&mqttClient, mqtt_state_channel, "Config saved to flash", 21, mqtt_qos, 0);
+        expect_mode = NORMAL_MODE;
+        control_state = NORMAL_MODE;
       }
       else if(isExpStr(data, "exit", data_len))
       {
@@ -719,8 +724,8 @@ static void ICACHE_FLASH_ATTR app_init(void)
   //cJSON_test();
 
   INFO("memleak_debug_enable %d\n",check_memleak_debug_enable());
-  INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
-	INFO("*_*Comp app_init\n");
+  //INFO("TX_FIFO_LEN(UART0): %d\n",TX_FIFO_LEN(UART0));
+	//INFO("*_*Comp app_init\n");
 
   MQTT_InitLWT(&mqttClient, mqtt_state_channel, mqtt_offline_msg, mqtt_qos, 0);
   MQTT_Publish(&mqttClient, mqtt_state_channel, mqtt_online_msg, 19, mqtt_qos, 0);
